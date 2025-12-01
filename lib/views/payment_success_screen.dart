@@ -1,58 +1,28 @@
-// File: lib/views/payment_success_screen.dart
-
 import 'package:flutter/material.dart';
-import '../models/payment_result_model.dart'; // Import Model
+import '../models/payment_result_model.dart';
+import 'order_placed_view.dart';
 
-// ✅ 1. Sửa đổi thành StatefulWidget
-class PaymentResultScreen extends StatefulWidget {
+class PaymentResultScreen extends StatelessWidget {
   final PaymentResultModel result;
-
-  // ✅ 2. Thêm tham số callback
-  final VoidCallback? onProcessOrderSuccess;
+  final String? orderId; 
 
   const PaymentResultScreen({
     Key? key,
     required this.result,
-    this.onProcessOrderSuccess, // ✅ Nhận callback
+    this.orderId, 
   }) : super(key: key);
 
   @override
-  State<PaymentResultScreen> createState() => _PaymentResultScreenState();
-}
-
-class _PaymentResultScreenState extends State<PaymentResultScreen> {
-
-  @override
-  void initState() {
-    super.initState();
-
-    // ✅ 3. Xử lý logic độ trễ và chuyển hướng trong initState
-    // Chỉ xử lý nếu giao dịch thành công và có callback được truyền vào
-    if (widget.result.isSuccess && widget.onProcessOrderSuccess != null) {
-      // Đặt độ trễ 2 giây
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          // Thực thi hàm _processOrder được truyền từ CheckoutView
-          widget.onProcessOrderSuccess!();
-
-          // Thao tác này sẽ ghi đè màn hình hiện tại (PaymentResultScreen)
-          // bằng OrderPlacedView, hoàn tất luồng.
-        }
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Lấy dữ liệu từ widget.result thay vì result (do là State)
-    final Color primaryColor = widget.result.isSuccess ? Colors.green : Colors.red;
-    final IconData primaryIcon = widget.result.isSuccess ? Icons.check_circle : Icons.cancel;
-    final String statusText = widget.result.isSuccess ? 'Thanh Toán Thành Công!' : 'Thanh Toán Thất Bại';
+    final Color primaryColor = result.isSuccess ? Colors.green : Colors.red;
+    final IconData primaryIcon = result.isSuccess ? Icons.check_circle : Icons.cancel;
+    final String statusText = result.isSuccess ? 'Thanh Toán Thành Công!' : 'Thanh Toán Thất Bại';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kết Quả Thanh Toán'),
+        title: const Text('Kết Quả Giao Dịch'),
         backgroundColor: primaryColor,
+        automaticallyImplyLeading: false, // Không hiển thị nút back
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -78,51 +48,55 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
               ),
               const SizedBox(height: 30.0),
 
-              // Hiển thị thông tin giao dịch (Sử dụng widget.result)
-              _buildInfoCard(
-                icon: Icons.monetization_on,
-                title: 'Số Tiền Thanh Toán',
-                value: widget.result.amount,
-              ),
               _buildInfoCard(
                 icon: Icons.receipt,
-                title: 'Mã Đơn Hàng',
-                value: widget.result.transactionRef,
+                title: 'Mã Giao Dịch VNPAY',
+                value: result.transactionRef,
+              ),
+              if (result.isSuccess && orderId != null)
+                _buildInfoCard(
+                  icon: Icons.inventory_2,
+                  title: 'Mã Đơn Hàng Của Bạn',
+                  value: '#$orderId',
+                ),
+
+              _buildInfoCard(
+                icon: Icons.monetization_on,
+                title: 'Số Tiền',
+                value: result.amount,
               ),
               _buildInfoCard(
                 icon: Icons.calendar_today,
-                title: 'Thời Gian Giao Dịch',
-                value: widget.result.payDate,
-              ),
-              _buildInfoCard(
-                icon: Icons.info_outline,
-                title: 'Mã Phản Hồi VNPAY',
-                value: widget.result.responseCode,
+                title: 'Thời Gian',
+                value: result.payDate,
               ),
 
               const SizedBox(height: 40.0),
-              // ✅ Tùy chỉnh: Nút này chỉ đơn thuần đóng màn hình,
-              // nhưng hành động hoàn tất đã được xử lý bởi initState (có độ trễ)
-              ElevatedButton(
-                onPressed: () {
-                  // Nếu là thất bại, cho phép người dùng đóng màn hình ngay lập tức
-                  if (!widget.result.isSuccess) {
-                    Navigator.pop(context);
-                  }
-                  // Nếu thành công, có thể để mặc cho initState xử lý hoặc pop ngay (tùy ý)
-                  // Để nhất quán, nếu thành công thì để initState xử lý chuyển hướng.
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
+
+              if (result.isSuccess && orderId != null)
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => OrderPlacedView(orderId: orderId!),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                   ),
+                  child: const Text('Xem Chi Tiết Đơn Hàng', style: TextStyle(color: Colors.white)),
                 ),
-                child: Text(
-                  widget.result.isSuccess ? 'Đang Hoàn Tất...' : 'Đóng',
-                  style: const TextStyle(fontSize: 18.0, color: Colors.white),
-                ),
+
+              const SizedBox(height: 10),
+
+              OutlinedButton(
+                onPressed: () {
+                   Navigator.of(context).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+                },
+                child: Text(result.isSuccess ? 'Tiếp Tục Mua Sắm' : 'Thử Lại'),
               ),
             ],
           ),
@@ -131,7 +105,6 @@ class _PaymentResultScreenState extends State<PaymentResultScreen> {
     );
   }
 
-  // Phương thức tiện ích được chuyển vào lớp State
   Widget _buildInfoCard({
     required IconData icon,
     required String title,

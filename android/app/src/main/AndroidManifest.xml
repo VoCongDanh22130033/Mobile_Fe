@@ -5,7 +5,9 @@
     <application
         android:label="shopsense_new"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,22 +27,22 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <intent-filter>
+            <!-- ✅ SỬA LỖI: Đăng ký Deep Link để xử lý liên kết trả về từ VNPAY -->
+            <intent-filter android:label="flutter_deeplinking">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-
-                <data
-                    android:scheme="myshopsense"
-                    android:host="vnpay_return"
-                    android:pathPrefix="/" />
+                <!-- Chấp nhận các liên kết có scheme là "myshopsense" -->
+                <data android:scheme="myshopsense" />
             </intent-filter>
 
         </activity>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
