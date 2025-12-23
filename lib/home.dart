@@ -79,9 +79,9 @@ class _HomeState extends State<Home> {
                 activeColor: Colors.white,
                 tabBackgroundColor: Colors.white38,
                 tabs: const [
-                  GButton(icon: Icons.home, text: 'Home'),
-                  GButton(icon: Icons.search, text: 'Search'),
-                  GButton(icon: Icons.favorite, text: 'Wishlist'),
+                  GButton(icon: Icons.home, text: 'Trang chủ'),
+                  GButton(icon: Icons.search, text: 'Tìm kiếm'),
+                  GButton(icon: Icons.favorite, text: 'Yêu thích'),
                   GButton(icon: Icons.account_circle, text: 'Profile'),
                 ],
               ),

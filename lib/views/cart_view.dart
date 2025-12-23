@@ -42,10 +42,10 @@ class _CartViewState extends State<CartView> {
     // Kiểm tra xem giá trị có phần thập phân bằng 0 không
     if (value == value.toInt().toDouble()) {
       // Nếu là số nguyên (ví dụ: 100.0), chỉ hiển thị số nguyên
-      return '\$${value.toInt()}';
+      return '${value.toInt()} VNĐ';
     } else {
       // Nếu có phần thập phân (ví dụ: 100.55), hiển thị 2 chữ số thập phân
-      return '\$${value.toStringAsFixed(2)}';
+      return '${value.toStringAsFixed(2)} VNĐ';
     }
   }
 
@@ -56,12 +56,11 @@ class _CartViewState extends State<CartView> {
       appBar: AppBar(
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
-        title: const Text("My Cart"),
+        title: const Text("Giỏ Hàng"),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // 📦 Danh sách sản phẩm
           Expanded(
             child: FutureBuilder<List<CartItem>>(
               future: _cartFuture,
@@ -143,7 +142,7 @@ class _CartViewState extends State<CartView> {
                                   const SizedBox(height: 4),
                                   Text(
                                     // ✅ SỬ DỤNG formatCurrency
-                                    formatCurrency(item.productUnitPrice),
+                                    formatCurrency(item.subTotal),
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w500,
                                         color: Colors.green),
@@ -178,6 +177,8 @@ class _CartViewState extends State<CartView> {
                                                 2);
                                           });
                                           await customerUpdateCart(item);
+                                          refreshCart(); // 🔥 load lại cart từ server
+
                                         }
                                       },
                                     ),
@@ -202,6 +203,8 @@ class _CartViewState extends State<CartView> {
                                               2);
                                         });
                                         await customerUpdateCart(item);
+                                        refreshCart(); // 🔥 load lại cart từ server
+
                                       },
                                     ),
                                   ],
@@ -247,7 +250,7 @@ class _CartViewState extends State<CartView> {
                   ),
                   icon: const Icon(Icons.shopify, color: Colors.white),
                   label: const Text(
-                    'Checkout',
+                    'Thanh Toán',
                     style: TextStyle(fontSize: 15, color: Colors.white),
                   ),
                   onPressed: () {

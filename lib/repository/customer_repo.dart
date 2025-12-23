@@ -24,7 +24,7 @@ Future<int> _getCustomerId() async {
   if (userId != null && userId.isNotEmpty) {
     return int.parse(userId);
   } else {
-    throw Exception("User not logged in");
+    throw Exception("Người dùng chưa đăng nhập");
   }
 }
 
@@ -61,7 +61,7 @@ Future<Customer> customerProfile() async {
   if (response.statusCode == 200) {
     return customerFromJson(response.body);
   } else {
-    throw Exception("Failed to get customer profile");
+    throw Exception("Không thể lấy được thông tin khách hàng.");
   }
 }
 // List order
@@ -74,7 +74,7 @@ Future<List<Order>> customerOrders() async {
   if (response.statusCode == 200) {
     return orderListFromJson(response.body);
   } else {
-    throw Exception("Failed to get customer orders");
+    throw Exception("Không nhận được đơn đặt hàng ");
   }
 }
 // List card
@@ -130,34 +130,28 @@ Future<PlaceOrder> customerGetOrder(String orderId) async {
   if (response.statusCode == 200 && response.body != "") {
     return placeOrderFromJson(response.body);
   } else {
-    throw Exception("Failed to get customer profile");
+    throw Exception("Không thể lấy được thông tin khách hàng.");
   }
 }
 // Update to card
 Future<bool> customerUpdateCart(CartItem item) async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String token = prefs.getString('token') ?? "";
+  final url = Uri.parse('$baseUrl/customer/cart');
 
   final response = await http.put(
-    Uri.parse('$baseUrl/customer/cart/update'),
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer $token"
-    },
-    body: jsonEncode({
-      "id": item.id,
-      "productQuantity": item.productQuantity,
-      "subTotal": item.subTotal,
-    }),
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(item.toJson()),
   );
 
   if (response.statusCode == 200) {
+    print('Cập nhật giỏ hàng thành công');
     return true;
   } else {
-    print("❌ Update cart failed: ${response.body}");
+    print(' Cập nhật giỏ hàng không thành công: ${response.body}');
     return false;
   }
 }
+
 
 // remove card
 Future<bool> customerRemoveCart(int id) async {

@@ -33,7 +33,7 @@ class _OrderViewState extends State<OrderView> {
       appBar: AppBar(
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
-        title: const Text("Order Details"),
+        title: const Text("Chi tiết đặt hàng"),
       ),
       body: p == null
           ? const Center(child: CircularProgressIndicator())
@@ -49,7 +49,7 @@ class _OrderViewState extends State<OrderView> {
                   style: const TextStyle(fontSize: 16),
                 ),
                 Text(
-                  "Placed On: ${p!.orderDate.toString().split(" ")[0]}",
+                  "Thời gian đặt: ${p!.orderDate.toString().split(" ")[0]}",
                   style: const TextStyle(fontSize: 16),
                 ),
               ],
@@ -59,7 +59,7 @@ class _OrderViewState extends State<OrderView> {
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
-              "Order Items",
+              "Đơn hàng đã đặt",
               style: TextStyle(
                 fontSize: 20,
                 decoration: TextDecoration.underline,
@@ -73,7 +73,7 @@ class _OrderViewState extends State<OrderView> {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
-                      child: Text("Error: ${snapshot.error}"));
+                      child: Text("Lỗi: ${snapshot.error}"));
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -118,7 +118,7 @@ class _OrderViewState extends State<OrderView> {
                               color: Colors.grey, fontSize: 14),
                         ),
                         trailing: Text(
-                          "\$${item.subTotal.toStringAsFixed(2)}",
+                          "${item.subTotal.toStringAsFixed(2)}VNĐ",
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.green),
@@ -134,7 +134,7 @@ class _OrderViewState extends State<OrderView> {
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
-              "Order Summary",
+              "Tổng đơn hàng",
               style: TextStyle(
                 fontSize: 20,
                 decoration: TextDecoration.underline,
@@ -147,21 +147,20 @@ class _OrderViewState extends State<OrderView> {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Column(
               children: [
-                _buildSummaryRow("Shipping Charge",
-                    "\$${p!.shippingCharge.toStringAsFixed(2)}"),
+                _buildSummaryRow("Phí vận chuyển",
+                    "${p!.shippingCharge.toStringAsFixed(2)}VNĐ"),
                 _buildSummaryRow(
-                    "Tax (5%)", "\$${p!.tax.toStringAsFixed(2)}"),
+                    "Thuế", "${p!.tax.toStringAsFixed(2)}VNĐ"),
                 const SizedBox(height: 8),
                 _buildSummaryRow(
-                  "Order Total",
-                  "\$${p!.orderTotal.toStringAsFixed(2)}",
+                  "Tổng",
+                  "${p!.orderTotal.toStringAsFixed(2)}VNĐ",
                   bold: true,
                 ),
               ],
             ),
           ),
 
-          // 🔙 Nút quay lại trang chủ
           TextButton(
             onPressed: () {
               Navigator.pushAndRemoveUntil(
@@ -176,7 +175,7 @@ class _OrderViewState extends State<OrderView> {
               const EdgeInsets.symmetric(vertical: 15, horizontal: 50),
             ),
             child: const Text(
-              "Back To Home",
+              "Trở về trang chủ",
               style: TextStyle(
                 fontSize: 17,
                 color: Colors.black,

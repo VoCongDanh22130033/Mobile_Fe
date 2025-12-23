@@ -88,13 +88,13 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
               const Icon(Icons.lock_outline, color: Colors.white, size: 80),
               const SizedBox(height: 20),
               const Text(
-                "You are not signed in",
+                "Bạn chưa đăng nhập ?",
                 style: TextStyle(color: Colors.white, fontSize: 20),
               ),
               const SizedBox(height: 10),
               ElevatedButton.icon(
                 icon: const Icon(Icons.login),
-                label: const Text("Login"),
+                label: const Text("Đăng Nhập"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.indigo,
@@ -118,7 +118,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.indigo,
-        title: const Text("My Profile"),
+        title: const Text("Hồ Sơ"),
         centerTitle: true,
       ),
       body: FadeTransition(
@@ -135,12 +135,12 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                   }
                   if (snapshot.hasError) {
                     return Text(
-                      "Error: ${snapshot.error}",
+                      "Lỗir: ${snapshot.error}",
                       style: const TextStyle(fontSize: 18, color: Colors.red),
                     );
                   }
                   if (!snapshot.hasData || snapshot.data == null) {
-                    return const Text("No profile data found");
+                    return const Text("Không tìm thấy dữ liệu hồ sơ");
                   }
 
                   final avatarUrl = snapshot.data!.img;
@@ -172,7 +172,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                     auth.logout();
                   },
                   icon: const Icon(Icons.logout),
-                  label: const Text("Logout"),
+                  label: const Text("Đăng Xuất"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigo,
                     foregroundColor: Colors.white,
@@ -187,7 +187,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
               const Padding(
                 padding: EdgeInsets.all(8.0),
                 child: Text(
-                  "Actions",
+                  " ",
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -204,7 +204,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                   childAspectRatio: 1,
                   children: [
                     _buildActionCard(
-                      "Orders",
+                      "Đơn Hàng",
                       Icons.shopping_bag,
                           () {
                         Navigator.push(
@@ -214,7 +214,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                       },
                     ),
                     _buildActionCard(
-                      "Edit Profile",
+                      "Chỉnh sửa ",
                       Icons.edit,
                           () async {
                         final profile = await customerProfile(); // không truyền tham số
@@ -228,7 +228,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                       },
                     ),
                     _buildActionCard(
-                      "Wishlist",
+                      "Yêu thích",
                       Icons.favorite,
                           () async {
                         Navigator.push(
@@ -238,10 +238,10 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                       },
                     ),
                     _buildActionCard(
-                      "Addresses",
+                      "Địa Chỉ",
                       Icons.location_on,
                           () {
-                        debugPrint('addresses tapped.');
+                        debugPrint('Địa chỉ.');
                       },
                     ),
                   ],
@@ -262,7 +262,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
         if (auth.userId.isEmpty) {
           return _buildNotLoggedInView();
         } else {
-          return _buildProfileView(); // không cần truyền userId
+          return _buildProfileView();
         }
       },
     );

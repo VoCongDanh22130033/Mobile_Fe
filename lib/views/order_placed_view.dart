@@ -26,13 +26,13 @@ class _OrderPlacedViewState extends State<OrderPlacedView> {
             ),
             const SizedBox(height: 50),
             const Text(
-              "Your Order Has\nBeen Accepted",
+              "Đơn đặt hàng của bạn đã được chấp nhận.",
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
             ),
             const SizedBox(height: 10),
             const Text(
-              "Your item has been placed and is\non it's way to being processed",
+              "Đơn hàng của bạn đã được đặt và đang trên đường xử lý.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
@@ -51,7 +51,7 @@ class _OrderPlacedViewState extends State<OrderPlacedView> {
                     const EdgeInsets.symmetric(vertical: 15, horizontal: 50),
               ),
               child: const Text(
-                "Track Order",
+                "Theo dõi đơn hàng",
                 style: TextStyle(fontSize: 17),
               ),
             ),
@@ -69,7 +69,7 @@ class _OrderPlacedViewState extends State<OrderPlacedView> {
                     const EdgeInsets.symmetric(vertical: 15, horizontal: 50),
               ),
               child: const Text(
-                "Back To Home",
+                "Trở về trang chủ",
                 style: TextStyle(
                   fontSize: 17,
                   color: Colors.black,

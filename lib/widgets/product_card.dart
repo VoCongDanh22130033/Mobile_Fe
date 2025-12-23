@@ -40,14 +40,14 @@ class ProductCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  '\$${price.toStringAsFixed(2)}',
+                  '${price.toStringAsFixed(2)}VNĐ',
                   style: const TextStyle(
                     color: Colors.red,
                     decoration: TextDecoration.lineThrough,
                   ),
                 ),
                 Text(
-                  '\$${salePrice.toStringAsFixed(2)}',
+                  '${salePrice.toStringAsFixed(2)}VNĐ',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18.0,

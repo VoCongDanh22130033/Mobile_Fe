@@ -25,7 +25,9 @@ class _ProductViewState extends State<ProductView> {
   final TextEditingController _commentController = TextEditingController();
 
   // Đã sửa: Loại bỏ decimalDigits: 2 để hiển thị số nguyên
-  final currencyFormatter = NumberFormat.currency(symbol: "\$", decimalDigits: 0);
+  final currencyFormatter =
+  NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0);
+
 
   @override
   void initState() {
@@ -37,12 +39,12 @@ class _ProductViewState extends State<ProductView> {
   double _parsePrice(String? price) {
     if (price == null || price.isEmpty) return 0.0;
 
-    // Loại bỏ dấu phân cách hàng nghìn (',' và '.') để tránh lỗi Parse
-    String cleanedPrice = price.replaceAll(',', '').replaceAll('.', '');
+    // Chỉ loại bỏ dấu phẩy nếu có (API trả về kiểu 150,000)
+    String cleanedPrice = price.replaceAll(',', '');
 
-    // Chuyển đổi thành double an toàn
     return double.tryParse(cleanedPrice) ?? 0.0;
   }
+
 
   // Hàm lấy giá bán (ưu tiên giá giảm)
   double _getSellingPrice() {
@@ -54,7 +56,6 @@ class _ProductViewState extends State<ProductView> {
   void getProduct() async {
     product = await fetchProduct(widget.productId);
     setState(() {
-      // ✅ SỬA: Tính subTotal ban đầu dựa trên giá giảm
       subTotal = _getSellingPrice();
     });
   }
@@ -62,7 +63,6 @@ class _ProductViewState extends State<ProductView> {
   void incrementQuantity() {
     setState(() {
       quantity++;
-      // ✅ SỬA: Tính tổng dựa trên giá giảm
       subTotal = _getSellingPrice() * quantity;
     });
   }
@@ -71,7 +71,6 @@ class _ProductViewState extends State<ProductView> {
     if (quantity > 1) {
       setState(() {
         quantity--;
-        // ✅ SỬA: Tính tổng dựa trên giá giảm
         subTotal = _getSellingPrice() * quantity;
       });
     }
@@ -95,17 +94,17 @@ class _ProductViewState extends State<ProductView> {
     );
 
     await customerAddToCart(c)
-        ? showMessage("✅ Added to cart")
-        : showMessage("❌ Something went wrong");
+        ? showMessage("Đã thêm vào giỏ hàng")
+        : showMessage("Đã xảy ra lỗi");
   }
 
   // ✅ HÀM SUBMIT REVIEW ĐÃ KHÔI PHỤC
   void submitReview() {
     if (_commentController.text.isEmpty) {
-      showMessage("Please write a comment!");
+      showMessage("Hãy để lại bình luận !");
       return;
     }
-    showMessage("⭐ You rated $rating stars and commented: ${_commentController.text}");
+    showMessage("Bạn đã đánh giá $rating sao và bình luận: ${_commentController.text}");
     _commentController.clear();
     setState(() {
       rating = 5;
@@ -122,7 +121,7 @@ class _ProductViewState extends State<ProductView> {
       appBar: AppBar(
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
-        title: const Text("Product Details"),
+        title: const Text("Chi tiết sản phẩm"),
       ),
       body: FutureBuilder<Product>(
         future: fetchProduct(widget.productId),
@@ -219,7 +218,7 @@ class _ProductViewState extends State<ProductView> {
                       const Icon(Icons.star_border, color: Colors.amber, size: 20),
                       const SizedBox(width: 6),
                       const Text(
-                        "(24 reviews)",
+                        "(Đánh giá )",
                         style: TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ],
@@ -297,7 +296,7 @@ class _ProductViewState extends State<ProductView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "Write a Review",
+                        "Viết đánh giá",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -324,7 +323,7 @@ class _ProductViewState extends State<ProductView> {
                         controller: _commentController,
                         maxLines: 3,
                         decoration: InputDecoration(
-                          hintText: "Write your comment here...",
+                          hintText: "Viết đánh giá ...",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -340,7 +339,7 @@ class _ProductViewState extends State<ProductView> {
                           onPressed: submitReview,
                           icon: const Icon(Icons.send, color: Colors.white),
                           label: const Text(
-                            "Submit Review",
+                            "Gửi đánh giá",
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
@@ -384,12 +383,12 @@ class _ProductViewState extends State<ProductView> {
                           try {
                             bool success = await addToWishlist(wishlist);
                             if (success) {
-                              showMessage("❤️ Added to favorites");
+                              showMessage("Thêm vào mục yêu thích");
                             } else {
-                              showMessage("⚠️ Already in favorites");
+                              showMessage("Đã có trong mục yêu thích");
                             }
                           } catch (e) {
-                            showMessage("❌ Failed to add to favorites");
+                            showMessage("Không thể thêm vào mục yêu thích ");
                           }
                         },
                       ),
@@ -404,7 +403,7 @@ class _ProductViewState extends State<ProductView> {
                             Icon(Icons.add_shopping_cart, color: Colors.white),
                             SizedBox(width: 8.0),
                             Text(
-                              'Add to Cart',
+                              'Thêm vào giỏ hàng',
                               style: TextStyle(
                                 fontSize: 15,
                                 color: Colors.white,

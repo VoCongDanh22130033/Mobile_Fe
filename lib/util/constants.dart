@@ -1,7 +1,9 @@
 // máy ảo
-const String baseUrl = "http://10.0.2.2:8080";
+// const String baseUrl = "http://10.0.2.2:8080";
 //thiết bị thật
 // const String baseUrl = "http://192.168.2.18:8080";
+
+const String baseUrl = "https://jaliyah-nonfuturistic-extrinsically.ngrok-free.dev";
 
 // ✅ Hàm xử lý URL ảnh an toàn
 String getImageUrl(String path) {

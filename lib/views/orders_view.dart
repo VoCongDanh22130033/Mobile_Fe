@@ -52,7 +52,7 @@ class _OrdersViewState extends State<OrdersView> {
                   subtitle:
                       Text(snapshot.data![index].orderDate.toIso8601String()),
                   trailing: Text(
-                    "\$${snapshot.data![index].orderTotal.toString()}",
+                    "${snapshot.data![index].orderTotal.toString()}VNĐ",
                     style: const TextStyle(fontSize: 16),
                   ),
 

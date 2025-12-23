@@ -4,7 +4,7 @@ import 'package:shopsense_new/models/order_details.dart';
 import 'package:shopsense_new/models/place_order.dart';
 import 'package:shopsense_new/repository/customer_repo.dart';
 import 'package:shopsense_new/views/order_placed_view.dart';
-import 'package:shopsense_new/util/constants.dart'; // baseUrl
+import 'package:shopsense_new/util/constants.dart'; // chứa biến baseUrl
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -13,11 +13,13 @@ import 'dart:convert';
 import 'package:shopsense_new/models/payment_result_model.dart';
 import 'package:shopsense_new/views/payment_success_screen.dart';
 
+// ===================== SERVICE THANH TOÁN =====================
 class PaymentService {
   final String backendBaseUrl;
   PaymentService({required this.backendBaseUrl});
 
-  Future<String?> fetchVnPayUrl(int amount) async {
+  // Cập nhật: Thêm tham số orderId vào body request
+  Future<String?> fetchVnPayUrl(int amount, String orderId) async {
     const apiEndpoint = '/api/payment/create';
     final createPaymentUrl = Uri.parse('$backendBaseUrl$apiEndpoint');
 
@@ -25,7 +27,10 @@ class PaymentService {
       final response = await http.post(
         createPaymentUrl,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'amount': amount}),
+        body: jsonEncode({
+          'amount': amount,
+          'orderId': int.parse(orderId) // Gửi Order ID thật lên Backend
+        }),
       );
 
       if (response.statusCode != 200) {
@@ -36,12 +41,13 @@ class PaymentService {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return data['paymentUrl'] as String?;
     } catch (e) {
-      print('Lỗi gọi API: $e');
+      print('Lỗi gọi API Payment: $e');
       return null;
     }
   }
 }
 
+// ===================== MÀN HÌNH CHECKOUT =====================
 class CheckoutView extends StatefulWidget {
   const CheckoutView({super.key});
 
@@ -71,6 +77,7 @@ class _CheckoutViewState extends State<CheckoutView> {
     getCartItems();
   }
 
+  // Helper format tiền tệ
   String _formatVnPayAmount(String amount) {
     try {
       final double vndAmount = int.parse(amount) / 100.0;
@@ -80,6 +87,7 @@ class _CheckoutViewState extends State<CheckoutView> {
     }
   }
 
+  // Helper format ngày tháng
   String _formatVnPayDate(String date) {
     if (date.length == 14) {
       try {
@@ -118,9 +126,10 @@ class _CheckoutViewState extends State<CheckoutView> {
     }
 
     orderTotal = subTotal + gatewayFee - discount;
-    if(mounted) setState(() {});
+    if (mounted) setState(() {});
   }
 
+  // Hàm tạo đơn hàng lên Server
   Future<String> _processOrder(String paymentMethod, String paymentStatus) async {
     List<OrderDetail> orderDetails = [];
     for (CartItem item in items) {
@@ -146,11 +155,14 @@ class _CheckoutViewState extends State<CheckoutView> {
       gatewayFee: gatewayFee.round().toDouble(), orderDetails: orderDetails,
     );
 
+    // Gọi API tạo đơn hàng, trả về Order ID (dạng String)
     String orderId = await customerPlaceOrder(order);
     return orderId;
   }
 
+  // Logic xử lý khi bấm nút "Place Order"
   void placeOrder(String method) async {
+    // 1. Trường hợp COD (Giữ nguyên)
     if (method == 'COD') {
       String orderId = await _processOrder("COD", "Pending");
       if (orderId.isNotEmpty) {
@@ -164,30 +176,46 @@ class _CheckoutViewState extends State<CheckoutView> {
       return;
     }
 
+    // 2. Trường hợp VNPay
     if (method == 'VNPay') {
-      showMessage("Đang chuẩn bị cổng VNPay...");
+      showMessage("Đang tạo đơn hàng...");
+
+      // BƯỚC 1: Tạo đơn hàng với trạng thái Pending TRƯỚC để lấy ID
+      String orderId = await _processOrder("VNPay", "Pending");
+
+      if (orderId.isEmpty || orderId == "0") {
+        showMessage("Lỗi tạo đơn hàng. Vui lòng thử lại.");
+        return;
+      }
+
+      showMessage("Đang chuyển hướng sang VNPay...");
       int amountInVND = orderTotal.round();
-      String? vnPayUrl = await paymentService.fetchVnPayUrl(amountInVND);
+
+      // BƯỚC 2: Gọi API lấy link thanh toán (Gửi kèm orderId vừa tạo)
+      String? vnPayUrl = await paymentService.fetchVnPayUrl(amountInVND, orderId);
 
       if (vnPayUrl != null && mounted) {
+        // BƯỚC 3: Mở WebView
         final resultUrl = await Navigator.push<String>(
           context,
           MaterialPageRoute(builder: (context) => VnPayWebView(vnPayUrl: vnPayUrl)),
         );
 
+        // BƯỚC 4: Xử lý kết quả trả về từ WebView
         if (resultUrl != null && mounted) {
           final uri = Uri.parse(resultUrl);
-          _processVnPayResult(uri);
+          _processVnPayResult(uri, orderId); // Truyền orderId đã tạo vào để hiển thị
         } else if (mounted) {
-          showMessage("Giao dịch đã bị hủy.");
+          showMessage("Giao dịch đã bị hủy hoặc chưa hoàn tất.");
+          // Có thể điều hướng về trang chi tiết đơn hàng (Pending) tại đây
         }
       } else {
-        showMessage("Không thể tạo URL thanh toán. Vui lòng thử lại.");
+        showMessage("Không thể tạo URL thanh toán.");
       }
     }
   }
 
-  void _processVnPayResult(Uri uri) async {
+  void _processVnPayResult(Uri uri, String orderId) async {
     final resultData = PaymentResultModel(
       transactionRef: uri.queryParameters['vnp_TxnRef'] ?? '',
       amount: _formatVnPayAmount(uri.queryParameters['vnp_Amount'] ?? '0'),
@@ -197,19 +225,19 @@ class _CheckoutViewState extends State<CheckoutView> {
       transactionStatus: uri.queryParameters['vnp_TransactionStatus'] ?? '',
     );
 
-    String paymentStatus = resultData.isSuccess ? "Paid" : "Failed";
-    String orderId = await _processOrder("VNPay", paymentStatus);
+    // Lưu ý: Không cần gọi _processOrder lần nữa vì Backend đã update trạng thái rồi.
+    // Chỉ cần hiển thị màn hình kết quả.
 
     if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-                builder: (context) => PaymentResultScreen(
-                    result: resultData,
-                    orderId: orderId.isNotEmpty ? orderId : null,
-                ),
-            ),
-            (Route<dynamic> route) => false,
-        );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => PaymentResultScreen(
+            result: resultData,
+            orderId: orderId, // Sử dụng Order ID đã tạo từ trước
+          ),
+        ),
+            (Route<dynamic> route) => false, // Xóa hết lịch sử back stack để user về Home
+      );
     }
   }
 
@@ -227,7 +255,7 @@ class _CheckoutViewState extends State<CheckoutView> {
       appBar: AppBar(
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
-        title: const Text("Order Confirmation"),
+        title: const Text("Xác nhận đơn hàng"),
       ),
       body: Column(
         children: [
@@ -238,48 +266,62 @@ class _CheckoutViewState extends State<CheckoutView> {
                 children: [
                   const Padding(
                     padding: EdgeInsets.all(8.0),
-                    child: Text("Shipping Info", style: TextStyle(fontSize: 20, decoration: TextDecoration.underline, fontWeight: FontWeight.bold)),
+                    child: Text("Thông tin vận chuyển", style: TextStyle(fontSize: 20, decoration: TextDecoration.underline, fontWeight: FontWeight.bold)),
                   ),
-                  buildTextField(_street, "Street Address"),
-                  buildTextField(_postCode, "Post Code"),
-                  buildTextField(_district, "District"),
-                  buildTextField(_division, "Division"),
+                  buildTextField(_street, "Địa chỉ "),
+                  buildTextField(_postCode, "Mã bưu điện"),
+                  buildTextField(_district, "Huyện"),
+                  buildTextField(_division, "Số Nhà"),
                   const SizedBox(height: 25),
 
                   const Padding(
                     padding: EdgeInsets.all(8.0),
-                    child: Text("Order Summary", style: TextStyle(fontSize: 20, decoration: TextDecoration.underline, fontWeight: FontWeight.bold)),
+                    child: Text("Sản Phẩm", style: TextStyle(fontSize: 20, decoration: TextDecoration.underline, fontWeight: FontWeight.bold)),
                   ),
-                  FutureBuilder<List<CartItem>>(
-                    future: customerCart(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(child: Text(snapshot.error.toString()));
-                      } else if (snapshot.hasData) {
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: snapshot.data!.length,
-                          itemBuilder: (context, index) {
-                            final item = snapshot.data![index];
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: Image.network(
-                                  item.productThumbnailUrl != null ? (item.productThumbnailUrl!.startsWith('http') ? item.productThumbnailUrl! : '$baseUrl/${item.productThumbnailUrl}') : 'https://via.placeholder.com/80',
-                                  width: 55, height: 55, fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                                ),
-                              ),
-                              title: Text("${item.productName} x${item.productQuantity}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(item.storeName ?? "", style: const TextStyle(fontSize: 13)),
-                              trailing: Text("\$${_formatIntPrice(item.subTotal)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
-                            );
-                          },
-                        );
-                      }
-                      return const Center(child: CircularProgressIndicator());
+                  // FutureBuilder<List<CartItem>>(
+                  //   future: customerCart(),
+                  //   builder: (context, snapshot) {
+                  //     if (snapshot.hasError) {
+                  //       return Center(child: Text(snapshot.error.toString()));
+                  //     } else if (snapshot.hasData) {
+                  //       return ListView.builder(
+                  //         shrinkWrap: true,
+                  //         physics: const NeverScrollableScrollPhysics(),
+                  //         itemCount: snapshot.data!.length,
+                  //         itemBuilder: (context, index) {
+                  //           final item = snapshot.data![index];
+                  //           return ListTile(
+                  //             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  //             leading: ClipRRect(
+                  //               borderRadius: BorderRadius.circular(6),
+                  //               child: Image.network(
+                  //                 item.productThumbnailUrl != null ? (item.productThumbnailUrl!.startsWith('http') ? item.productThumbnailUrl! : '$baseUrl/${item.productThumbnailUrl}') : 'https://via.placeholder.com/80',
+                  //                 width: 55, height: 55, fit: BoxFit.cover,
+                  //                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                  //               ),
+                  //             ),
+                  //             title: Text("${item.productName} x${item.productQuantity}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  //             subtitle: Text(item.storeName ?? "", style: const TextStyle(fontSize: 13)),
+                  //             trailing: Text("${_formatIntPrice(item.subTotal)}VNĐ", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+                  //           );
+                  //         },
+                  //       );
+                  //     }
+                  //     return const Center(child: CircularProgressIndicator());
+                  //   },
+                  // ),
+                  items.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return ListTile(
+                        title: Text("${item.productName} x${item.productQuantity}"),
+                        trailing: Text("${_formatIntPrice(item.subTotal)}VNĐ"),
+                      );
                     },
                   ),
 
@@ -287,7 +329,7 @@ class _CheckoutViewState extends State<CheckoutView> {
 
                   const Padding(
                     padding: EdgeInsets.all(8.0),
-                    child: Text("Payment Method", style: TextStyle(fontSize: 20, decoration: TextDecoration.underline, fontWeight: FontWeight.bold)),
+                    child: Text("Phương thức thanh toán", style: TextStyle(fontSize: 20, decoration: TextDecoration.underline, fontWeight: FontWeight.bold)),
                   ),
                   RadioListTile<String>(
                     title: const Text('Thanh toán khi nhận hàng (COD)'),
@@ -296,18 +338,18 @@ class _CheckoutViewState extends State<CheckoutView> {
                     onChanged: (value) => setState(() => _selectedPaymentMethod = value!),
                   ),
                   RadioListTile<String>(
-                    title: const Text('Thanh toán VNPay (Online)'),
+                    title: const Text('Thanh toán VNPay'),
                     value: 'VNPay',
                     groupValue: _selectedPaymentMethod,
                     onChanged: (value) => setState(() => _selectedPaymentMethod = value!),
                   ),
                   const SizedBox(height: 15),
 
-                  buildSummaryRow("Subtotal (Discounted) :", subTotal),
+                  buildSummaryRow("Tạm tính :", subTotal),
                   if (discount > 0) buildSummaryRow("Discount :", -discount, color: Colors.red),
                   if (gatewayFee > 0) buildSummaryRow("Gateway Fee :", gatewayFee),
                   const SizedBox(height: 15),
-                  buildSummaryRow("Order Total :", orderTotal, isBold: true, color: Colors.indigo),
+                  buildSummaryRow("Tổng :", orderTotal, isBold: true, color: Colors.indigo),
                 ],
               ),
             ),
@@ -329,7 +371,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                       children: [
                         Icon(_selectedPaymentMethod == 'COD' ? Icons.local_shipping : Icons.payment, color: Colors.white),
                         const SizedBox(width: 8.0),
-                        Text(_selectedPaymentMethod == 'COD' ? 'Place Order (COD)' : 'Thanh toán VNPay', style: const TextStyle(fontSize: 15, color: Colors.white)),
+                        Text(_selectedPaymentMethod == 'COD' ? 'Đặt Hàng' : 'Thanh toán VNPay', style: const TextStyle(fontSize: 15, color: Colors.white)),
                       ],
                     ),
                   ),
@@ -356,14 +398,14 @@ class _CheckoutViewState extends State<CheckoutView> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(fontSize: 16, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text("\$${_formatIntPrice(value)}", style: TextStyle(fontSize: 16, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, color: color)),
+          Text("${_formatIntPrice(value)}VNĐ", style: TextStyle(fontSize: 16, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, color: color)),
         ],
       ),
     );
   }
 }
 
-// ✅ PHIÊN BẢN HOÀN THIỆN NHẤT: Hỗ trợ xử lý pop-up
+// ===================== WEBVIEW VNPAY (Xử lý Popup & DeepLink) =====================
 class VnPayWebView extends StatefulWidget {
   final String vnPayUrl;
 
@@ -376,7 +418,7 @@ class VnPayWebView extends StatefulWidget {
 class _VnPayWebViewState extends State<VnPayWebView> {
   final GlobalKey webViewKey = GlobalKey();
   InAppWebViewController? webViewController;
-  InAppWebViewController? popupWebViewController; // Controller cho popup
+  InAppWebViewController? popupWebViewController;
   double progress = 0;
 
   @override
@@ -390,13 +432,15 @@ class _VnPayWebViewState extends State<VnPayWebView> {
             child: InAppWebView(
               key: webViewKey,
               initialUrlRequest: URLRequest(url: Uri.parse(widget.vnPayUrl)),
+              // Cấu hình hỗ trợ mở cửa sổ mới (Popup)
               initialOptions: InAppWebViewGroupOptions(
                 crossPlatform: InAppWebViewOptions(
-                  useShouldOverrideUrlLoading: true, // Bắt buộc để shouldOverrideUrlLoading hoạt động
-                  javaScriptCanOpenWindowsAutomatically: true, // Cho phép JS mở cửa sổ mới
+                  useShouldOverrideUrlLoading: true,
+                  javaScriptCanOpenWindowsAutomatically: true,
                 ),
                 android: AndroidInAppWebViewOptions(
-                  useHybridComposition: true, // Bắt buộc đối với một số phiên bản Android
+                  useHybridComposition: true,
+                  supportMultipleWindows: true, // Quan trọng cho Android
                 ),
               ),
               onWebViewCreated: (controller) {
@@ -407,9 +451,8 @@ class _VnPayWebViewState extends State<VnPayWebView> {
                   this.progress = progress / 100;
                 });
               },
-              // ✅ SỬA LỖI: Xử lý khi có cửa sổ mới được tạo
+              // 1. Xử lý mở cửa sổ mới (cho các ngân hàng yêu cầu popup)
               onCreateWindow: (controller, createWindowAction) async {
-                print("onCreateWindow event detected");
                 showDialog(
                   context: context,
                   builder: (context) {
@@ -418,28 +461,23 @@ class _VnPayWebViewState extends State<VnPayWebView> {
                         width: double.maxFinite,
                         height: 500,
                         child: InAppWebView(
-                          // Gán key cho webview trong popup
+                          // Liên kết với windowId được tạo
                           windowId: createWindowAction.windowId,
                           initialOptions: InAppWebViewGroupOptions(
                             crossPlatform: InAppWebViewOptions(
                               useShouldOverrideUrlLoading: true,
                             ),
-                            android: AndroidInAppWebViewOptions(
-                              useHybridComposition: true,
-                            ),
                           ),
                           onWebViewCreated: (controller) {
                             popupWebViewController = controller;
                           },
+                          // Bắt DeepLink bên trong Popup
                           shouldOverrideUrlLoading: (popupController, navigationAction) async {
                             final uri = navigationAction.request.url;
-                            print("Intercepted URL in Popup: $uri");
                             if (uri != null && uri.scheme == "myshopsense") {
-                              // Đóng dialog
-                              Navigator.of(context, rootNavigator: true).pop(); 
-                              // Đóng màn hình webview chính và trả kết quả
+                              Navigator.of(context, rootNavigator: true).pop(); // Đóng popup
                               if (Navigator.canPop(context)) {
-                                Navigator.of(context).pop(uri.toString());
+                                Navigator.of(context).pop(uri.toString()); // Trả kết quả về màn hình chính
                               }
                               return NavigationActionPolicy.CANCEL;
                             }
@@ -450,13 +488,11 @@ class _VnPayWebViewState extends State<VnPayWebView> {
                     );
                   },
                 );
-                // Trả về true để cho phép mở cửa sổ mới
-                return true;
+                return true; // Cho phép tạo window
               },
+              // 2. Xử lý DeepLink ở màn hình chính
               shouldOverrideUrlLoading: (controller, navigationAction) async {
                 final uri = navigationAction.request.url;
-                print("Intercepted URL in Main WebView: $uri");
-
                 if (uri != null && uri.scheme == "myshopsense") {
                   if (Navigator.canPop(context)) {
                     Navigator.of(context).pop(uri.toString());
@@ -466,10 +502,7 @@ class _VnPayWebViewState extends State<VnPayWebView> {
                 return NavigationActionPolicy.ALLOW;
               },
               onLoadError: (controller, url, code, message) {
-                print("Main WebView error: $message (code $code)");
-              },
-              onLoadHttpError: (controller, url, statusCode, description) {
-                print("Main HTTP error: $description (statusCode $statusCode)");
+                print("Lỗi WebView: $message ($code)");
               },
             ),
           ),

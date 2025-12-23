@@ -17,8 +17,8 @@ class Explore extends StatefulWidget {
 }
 
 class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
-  final List<String> categories = ["All", "Watch", "Phone", "Laptop"];
-  String selectedCategory = "All";
+  final List<String> categories = ["Tất cả", "Đồng Hồ", "Điện Thoại", "Laptop"];
+  String selectedCategory = "Tất Cả";
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -192,7 +192,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content:
-        Text(success ? "❤️ Added to favorites" : "⚠️ Already in favorites"),
+        Text(success ? "Đã thêm vào mục yêu thích" : "Đã có trong mục yêu thích"),
       ),
     );
   }
@@ -228,7 +228,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      "shopsense_new",
+                      "ShopSense",
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -268,7 +268,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
 
           // CATEGORIES
           Container(
-            height: 35,
+            height: 40,
             margin: const EdgeInsets.symmetric(vertical: 8),
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
@@ -345,8 +345,6 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                     _parsePrice(product.salePrice);
                     final int regularPriceValue =
                     _parsePrice(product.regularPrice);
-
-
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -423,15 +421,17 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                                 children: [
                                   // ✅ Hiển thị Sale Price (kiểu int)
                                   Text(
-                                    "\$${salePriceValue}",
+                                    "${salePriceValue} VNĐ",
                                     style: const TextStyle(
+                                        fontSize: 13,
                                         color: Colors.redAccent,
                                         fontWeight: FontWeight.bold),
                                   ),
                                   // ✅ Hiển thị Regular Price (kiểu int)
                                   Text(
-                                    "\$${regularPriceValue}",
+                                    "${regularPriceValue} VNĐ",
                                     style: const TextStyle(
+                                      fontSize: 11,
                                       color: Colors.black54,
                                       decoration:
                                       TextDecoration.lineThrough,
@@ -450,7 +450,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                                   icon: const Icon(
                                       Icons.add_shopping_cart,
                                       size: 18),
-                                  label: const Text("Add to Cart"),
+                                  label: const Text("Thêm"),
                                 ),
                               ),
                             ),

@@ -115,7 +115,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
-                    '${item.salePrice.toStringAsFixed(0)} đ',
+                    '${item.salePrice.toStringAsFixed(0)} VNĐ',
                     style: const TextStyle(
                       color: Colors.deepPurple,
                       fontWeight: FontWeight.w500,
