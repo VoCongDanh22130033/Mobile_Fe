@@ -176,7 +176,7 @@ Future<bool> customerRemoveCart(int id) async {
 Future<bool> customerUpdateProfile(Customer user) async {
   try {
     final response = await http.put(
-      Uri.parse("http://localhost:8080/api/customers/${user.id}"),
+      Uri.parse("$baseUrl/api/customers/${user.id}"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(user.toJson()),
     );

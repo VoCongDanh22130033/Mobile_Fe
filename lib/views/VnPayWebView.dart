@@ -29,8 +29,9 @@ class _VnPayWebViewState extends State<VnPayWebView> {
         foregroundColor: Colors.white,
         backgroundColor: Colors.indigo,
       ),
-      body: InAppWebView( // ✅ SỬ DỤNG WIDGET MỚI
-        initialUrlRequest: URLRequest(url: Uri.parse(widget.paymentUrl)),
+      body: InAppWebView(
+        initialUrlRequest: URLRequest(
+            url: WebUri(widget.paymentUrl)),
 
         // Cấu hình WebView (giống như WebViewController Options)
         initialOptions: InAppWebViewGroupOptions(

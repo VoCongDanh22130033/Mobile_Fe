@@ -24,7 +24,9 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.shopsense_new"
-    compileSdk flutter.compileSdkVersion
+
+    // 🔧 ÉP DÙNG ANDROID SDK 35 (theo thông báo lỗi)
+    compileSdk 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -42,11 +44,13 @@ android {
 
     defaultConfig {
         applicationId "com.example.shopsense_new"
-        
-        // ✅ SỬA LỖI: Nâng minSdkVersion lên 21 để đảm bảo tương thích WebView
-        minSdkVersion 21
 
-        targetSdkVersion flutter.targetSdkVersion
+        // Giữ minSdk theo Flutter
+        minSdkVersion flutter.minSdkVersion
+
+        // 🔧 Có thể nâng luôn targetSdk lên 35 cho đồng bộ
+        targetSdkVersion 35
+
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
