@@ -44,7 +44,7 @@ android {
         applicationId "com.example.shopsense_new"
         
         // ✅ SỬA LỖI: Nâng minSdkVersion lên 21 để đảm bảo tương thích WebView
-        minSdkVersion 21
+        minSdkVersion flutter.minSdkVersion
 
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
