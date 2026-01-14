@@ -1,7 +1,9 @@
+
 plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
 }
 
 def localProperties = new Properties()
@@ -25,45 +27,36 @@ if (flutterVersionName == null) {
 android {
     namespace "com.example.shopsense_new"
 
-    // 🔧 ÉP DÙNG ANDROID SDK 35 (theo thông báo lỗi)
-    compileSdk 35
-    ndkVersion flutter.ndkVersion
+    compileSdk 36
+    ndkVersion "25.1.8937393"
+
+    defaultConfig {
+        applicationId "com.example.shopsense_new"
+        minSdkVersion 23
+        targetSdkVersion 36
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
+    kotlinOptions { jvmTarget = '1.8' }
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-
-    defaultConfig {
-        applicationId "com.example.shopsense_new"
-
-        // Giữ minSdk theo Flutter
-        minSdkVersion flutter.minSdkVersion
-
-        // 🔧 Có thể nâng luôn targetSdk lên 35 cho đồng bộ
-        targetSdkVersion 35
-
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
-    }
+    sourceSets { main.java.srcDirs += 'src/main/kotlin' }
 
     buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-        }
+        release { signingConfig signingConfigs.debug }
     }
 }
+
 
 flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    // Flutter Firebase (firebase_core/firebase_auth/...) sẽ tự kéo dependency Android cần thiết.
+}
