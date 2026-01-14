@@ -4,12 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:shopsense_new/models/product.dart';
 import 'package:shopsense_new/util/constants.dart';
 
-// ✅ Đổi tên cho đúng nghĩa
 List<Product> productsFromJson(String str) =>
     List<Product>.from(json.decode(str).map((x) => Product.fromJson(x)));
 
 Future<List<Product>> fetchProducts() async {
-  final url = Uri.parse('$baseUrl/products');
+  final url = Uri.parse('${ApiConfig.baseUrl}/products');
   final response = await http.get(url);
 
   if (response.statusCode == 200) {
@@ -24,7 +23,7 @@ Future<List<Product>> fetchProducts() async {
 }
 
 Future<Product> fetchProduct(String id) async {
-  final url = Uri.parse('$baseUrl/product/$id');
+  final url = Uri.parse('${ApiConfig.baseUrl}/product/$id');
   final response = await http.get(url);
 
   if (response.statusCode == 200) {
@@ -42,7 +41,7 @@ Future<List<Product>> fetchProductsByCategory(String category, int page) async {
 
     // Nếu chọn "Tất cả" → lấy toàn bộ sản phẩm
     if (category == "ALL") {
-      url = Uri.parse('$baseUrl/product/all?page=$page&pageSize=$pageSize');
+      url = Uri.parse('${ApiConfig.baseUrl}/product/all?page=$page&pageSize=$pageSize');
     } else {
       // Map tên category sang ID
       final Map<String, int> categoryMap = {
@@ -54,7 +53,7 @@ Future<List<Product>> fetchProductsByCategory(String category, int page) async {
       final int categoryId = categoryMap[category] ?? 1;
 
       url = Uri.parse(
-          '$baseUrl/category/products?categoryId=$categoryId&page=$page&pageSize=$pageSize');
+          '${ApiConfig.baseUrl}/category/products?categoryId=$categoryId&page=$page&pageSize=$pageSize');
     }
 
     final response = await http.get(url);
@@ -62,13 +61,13 @@ Future<List<Product>> fetchProductsByCategory(String category, int page) async {
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = jsonDecode(response.body);
 
-      // ✅ Parse list JSON thành danh sách Product
+      //Parse list JSON thành danh sách Product
       return jsonData.map((e) => Product.fromJson(e)).toList();
     } else {
       throw Exception('Lỗi khi tải sản phẩm: ${response.statusCode}');
     }
   } catch (e) {
-    print("❌ fetchProductsByCategory error: $e");
+    print("fetchProductsByCategory error: $e");
     rethrow;
   }
 }

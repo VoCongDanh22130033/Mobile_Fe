@@ -370,7 +370,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                                       product.thumbnailUrl.startsWith(
                                           'http')
                                           ? product.thumbnailUrl
-                                          : "$baseUrl${product.thumbnailUrl}",
+                                          : "${ApiConfig.baseUrl}${product.thumbnailUrl}",
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, _) =>
@@ -419,7 +419,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                                 mainAxisAlignment:
                                 MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // ✅ Hiển thị Sale Price (kiểu int)
+                                  //Hiển thị Sale Price (kiểu int)
                                   Text(
                                     "${salePriceValue} VNĐ",
                                     style: const TextStyle(
@@ -427,7 +427,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                                         color: Colors.redAccent,
                                         fontWeight: FontWeight.bold),
                                   ),
-                                  // ✅ Hiển thị Regular Price (kiểu int)
+                                  //Hiển thị Regular Price (kiểu int)
                                   Text(
                                     "${regularPriceValue} VNĐ",
                                     style: const TextStyle(

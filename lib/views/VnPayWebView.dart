@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// ✅ ĐÃ THAY THẾ: Import thư viện InAppWebView mới
+//ĐÃ THAY THẾ: Import thư viện InAppWebView mới
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class VnPayWebView extends StatefulWidget {
@@ -20,7 +20,7 @@ class _VnPayWebViewState extends State<VnPayWebView> {
 
   // Không cần khai báo 'late final WebViewController controller' nữa
   final String deepLinkScheme = 'myshopsense';
-
+  bool _finishedSuccessfully = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,6 +52,7 @@ class _VnPayWebViewState extends State<VnPayWebView> {
           final uri = navigationAction.request.url;
 
           if (uri != null && uri.scheme == deepLinkScheme) {
+            _finishedSuccessfully = true;
             widget.onPaymentReturn(uri);
             Navigator.pop(context);
             // Ngăn chặn WebView tải tiếp URL Deep Link
@@ -67,9 +68,26 @@ class _VnPayWebViewState extends State<VnPayWebView> {
         },
 
         // Log khi xảy ra lỗi tải trang
-        onLoadError: (controller, url, code, message) {
-          print('WebView Load Error ($code): $message');
-        },
+          onLoadError: (controller, url, code, message) {
+            //BỎ QUA lỗi giả khi WebView bị đóng / redirect
+            if (_finishedSuccessfully) return;
+
+            //Các mã lỗi KHÔNG PHẢI lỗi thật
+            if (code == -999 || code == -2 || code == -6) {
+              print('Ignored WebView error ($code): $message');
+              return;
+            }
+
+            print('REAL WebView Error ($code): $message');
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Có lỗi xảy ra trong quá trình thanh toán"),
+              ),
+            );
+
+            Navigator.pop(context);
+          },
       ),
     );
   }

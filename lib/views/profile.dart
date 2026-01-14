@@ -98,7 +98,8 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.indigo,
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 30, vertical: 12),
                 ),
                 onPressed: () {
                   Navigator.push(
@@ -167,21 +168,23 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
               ),
               const SizedBox(height: 10),
               Consumer<AuthProvider>(
-                builder: (context, auth, child) => ElevatedButton.icon(
-                  onPressed: () {
-                    auth.logout();
-                  },
-                  icon: const Icon(Icons.logout),
-                  label: const Text("Đăng Xuất"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                builder: (context, auth, child) =>
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        auth.logout();
+                      },
+                      icon: const Icon(Icons.logout),
+                      label: const Text("Đăng Xuất"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ),
               const SizedBox(height: 25),
               const Padding(
@@ -209,7 +212,8 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                           () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const OrdersView()),
+                          MaterialPageRoute(builder: (
+                              context) => const OrdersView()),
                         );
                       },
                     ),
@@ -221,7 +225,8 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                         final updatedUser = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => EditProfileView(currentUser: profile),
+                            builder: (context) =>
+                                EditProfileView(currentUser: profile),
                           ),
                         );
                         if (updatedUser != null) setState(() {});
@@ -233,7 +238,8 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                           () async {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const WishlistScreen()),
+                          MaterialPageRoute(builder: (
+                              context) => const WishlistScreen()),
                         );
                       },
                     ),
@@ -259,7 +265,7 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, child) {
-        if (auth.userId.isEmpty) {
+        if (!auth.isLoggedIn) {
           return _buildNotLoggedInView();
         } else {
           return _buildProfileView();

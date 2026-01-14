@@ -33,9 +33,9 @@ class Product {
   factory Product.fromJson(Map<dynamic, dynamic> json) {
     String thumb = json['thumbnailUrl'] ?? '';
 
-    // ✅ Nếu ảnh không bắt đầu bằng http hoặc https, thêm baseUrl
+    //Nếu ảnh không bắt đầu bằng http hoặc https, thêm baseUrl
     if (!thumb.startsWith('http')) {
-      thumb = '$baseUrl/$thumb';
+      thumb = '${ApiConfig.baseUrl}/$thumb';
     }
 
     return Product(

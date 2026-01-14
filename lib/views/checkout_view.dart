@@ -62,7 +62,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   double subTotal = 0;
   double gatewayFee = 0;
 
-  final PaymentService paymentService = PaymentService(backendBaseUrl: baseUrl);
+  final PaymentService paymentService = PaymentService(backendBaseUrl: ApiConfig.baseUrl);
   String _selectedPaymentMethod = 'COD';
 
   @override
@@ -267,7 +267,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(6),
                                 child: Image.network(
-                                  item.productThumbnailUrl != null ? (item.productThumbnailUrl!.startsWith('http') ? item.productThumbnailUrl! : '$baseUrl/${item.productThumbnailUrl}') : 'https://via.placeholder.com/80',
+                                  item.productThumbnailUrl != null ? (item.productThumbnailUrl!.startsWith('http') ? item.productThumbnailUrl! : '${ApiConfig.baseUrl}/${item.productThumbnailUrl}') : 'https://via.placeholder.com/80',
                                   width: 55, height: 55, fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
                                 ),
@@ -363,7 +363,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   }
 }
 
-// ✅ PHIÊN BẢN HOÀN THIỆN NHẤT: Hỗ trợ xử lý pop-up
+//PHIÊN BẢN HOÀN THIỆN NHẤT: Hỗ trợ xử lý pop-up
 class VnPayWebView extends StatefulWidget {
   final String vnPayUrl;
 
@@ -389,10 +389,13 @@ class _VnPayWebViewState extends State<VnPayWebView> {
           Expanded(
             child: InAppWebView(
               key: webViewKey,
-              initialUrlRequest: URLRequest(url: Uri.parse(widget.vnPayUrl)),
+              initialUrlRequest: URLRequest(
+                url: WebUri(widget.vnPayUrl),
+              ),
               initialOptions: InAppWebViewGroupOptions(
                 crossPlatform: InAppWebViewOptions(
-                  useShouldOverrideUrlLoading: true, // Bắt buộc để shouldOverrideUrlLoading hoạt động
+
+                useShouldOverrideUrlLoading: true, // Bắt buộc để shouldOverrideUrlLoading hoạt động
                   javaScriptCanOpenWindowsAutomatically: true, // Cho phép JS mở cửa sổ mới
                 ),
                 android: AndroidInAppWebViewOptions(
@@ -407,7 +410,7 @@ class _VnPayWebViewState extends State<VnPayWebView> {
                   this.progress = progress / 100;
                 });
               },
-              // ✅ SỬA LỖI: Xử lý khi có cửa sổ mới được tạo
+              //SỬA LỖI: Xử lý khi có cửa sổ mới được tạo
               onCreateWindow: (controller, createWindowAction) async {
                 print("onCreateWindow event detected");
                 showDialog(

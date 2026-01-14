@@ -15,14 +15,16 @@ dependencies:
   http: ^1.1.0
   provider: ^6.0.5
   shared_preferences: ^2.2.1
-
-  # ⚠️ bản mới → yêu cầu Android config phải rất mới
-  file_picker: 5.5.0
-
+  file_picker: 6.1.1
   webview_flutter: ^4.4.1
-  uni_links: ^0.5.1   # moved from dev_dependencies → đúng vị trí
-
+  flutter_inappwebview: ^6.0.0
   intl: ^0.19.0
+
+  #Firebase & Social Login
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^7.0.1
 
 dev_dependencies:
   flutter_test:
