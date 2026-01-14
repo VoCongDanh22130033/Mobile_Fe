@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "272219856152",
+    "project_id": "mobilepj-f89a8",
+    "storage_bucket": "mobilepj-f89a8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:272219856152:android:3dce0c1ed0c77695d2d26d",
+        "android_client_info": {
+          "package_name": "com.example.shopsense_new"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "272219856152-ev91r305srslt5im3bmijrsmmuhu1e6r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.shopsense_new",
+            "certificate_hash": "50904935fc0b2852f4250a4e1d72a333f30a12f7"
+          }
+        },
+        {
+          "client_id": "272219856152-ovgf944g6no3vikuh3ui0uki14vbouno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyU-iKhRVgrGtEMJU_BlmFb4ZjKxpzweY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "272219856152-ovgf944g6no3vikuh3ui0uki14vbouno.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "272219856152-iffkah55i8hmfpnpsnm97vjlc4lndfhn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.shopsenseNew"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
