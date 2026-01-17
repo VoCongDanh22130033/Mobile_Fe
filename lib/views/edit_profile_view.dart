@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shopsense_new/models/customer.dart';
-import 'package:shopsense_new/providers/auth_provider.dart';
 import 'package:shopsense_new/repository/customer_repo.dart';
 
 class EditProfileView extends StatefulWidget {
@@ -24,7 +22,6 @@ class _EditProfileViewState extends State<EditProfileView> {
   @override
   void initState() {
     super.initState();
-    // Khởi tạo controller với dữ liệu hiện tại
     _nameController = TextEditingController(text: widget.currentUser.name);
     _addressController = TextEditingController(text: widget.currentUser.address);
   }
@@ -36,7 +33,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     super.dispose();
   }
 
-  // Chọn ảnh từ thiết bị
+  // --- HÀM CHỌN ẢNH (Bổ sung vì bị thiếu) ---
   Future<void> _pickImage() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -48,209 +45,159 @@ class _EditProfileViewState extends State<EditProfileView> {
         setState(() => _selectedImage = File(result.files.single.path!));
       }
     } catch (e) {
-      _showError("Không thể mở trình chọn ảnh: $e");
+      debugPrint("Lỗi chọn ảnh: $e");
     }
   }
 
+  // --- HÀM CẬP NHẬT (Đã sửa logic hiển thị ngay lập tức) ---
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    FocusScope.of(context).unfocus(); // Ẩn bàn phím
     setState(() => isLoading = true);
 
     try {
-      // 1. Chuẩn bị dữ liệu cập nhật
+      // 1. Tạo object Customer mới từ dữ liệu người dùng vừa nhập
       Customer updatedData = Customer(
         id: widget.currentUser.id,
-        name: _nameController.text.trim(),
+        name: _nameController.text.trim(), // Lấy tên MỚI NHẤT từ ô nhập
         email: widget.currentUser.email,
-        address: _addressController.text.trim(),
+        address: _addressController.text.trim(), // Lấy địa chỉ MỚI NHẤT
         role: widget.currentUser.role,
         status: widget.currentUser.status,
-        // Lưu ý: Nếu có server upload ảnh, bạn nên gọi API upload trước rồi lấy URL gán vào đây
+        // Nếu có chọn ảnh mới thì lấy đường dẫn file, nếu không thì giữ ảnh cũ
         img: _selectedImage != null ? _selectedImage!.path : widget.currentUser.img,
         emailVerified: widget.currentUser.emailVerified,
       );
 
-      // 2. Gọi API cập nhật
+      // 2. Gọi API để lưu lên Server
       final bool success = await customerUpdateProfile(updatedData);
 
       if (!mounted) return;
 
       if (success) {
-        // Lấy lại dữ liệu "tươi" nhất từ Server để đảm bảo đồng bộ
-        // Điều này tránh việc dữ liệu local và server khác nhau
-        final freshCustomer = await customerProfile();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Cập nhật thành công! ✨"), backgroundColor: Colors.green),
+        );
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Cập nhật thành công! ✨"),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+        // 3. QUAN TRỌNG: Trả về object 'updatedData' vừa tạo
+        // Màn hình Profile sẽ nhận object này và hiển thị ngay lập tức
+        // KHÔNG gọi lại customerProfile() để tránh độ trễ server
+        Navigator.pop(context, updatedData);
 
-          // TRẢ VỀ ĐỐI TƯỢNG MỚI: Giúp màn hình Profile cập nhật ngay lập tức
-          Navigator.pop(context, freshCustomer);
-        }
       } else {
-        _showError("Cập nhật thất bại. Vui lòng kiểm tra lại kết nối.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Cập nhật thất bại."), backgroundColor: Colors.red),
+        );
       }
     } catch (e) {
-      // Log lỗi chi tiết để debug nếu gặp FormatException (lỗi HTML từ Ngrok)
-      debugPrint("❌ Error during update: $e");
-      _showError("Lỗi hệ thống: Vui lòng thử lại sau.");
+      debugPrint("Update error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Chỉnh sửa cá nhân", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        elevation: 0,
+          title: const Text("Chỉnh sửa thông tin"),
+          backgroundColor: Colors.indigo,
+          foregroundColor: Colors.white
       ),
       body: Stack(
         children: [
-          // Nền trang trí indigo phía trên
-          Container(height: 120, color: Colors.indigo),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
             child: Form(
               key: _formKey,
-              child: ListView(
+              child: Column(
                 children: [
-                  const SizedBox(height: 30),
-                  _buildAvatarHeader(),
+                  const SizedBox(height: 20),
+                  // Avatar Picker
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundColor: Colors.grey[200],
+                          // Logic hiển thị ảnh preview
+                          backgroundImage: _selectedImage != null
+                              ? FileImage(_selectedImage!) // Ưu tiên ảnh vừa chọn từ máy
+                              : (widget.currentUser.img != null && widget.currentUser.img!.startsWith('http'))
+                              ? NetworkImage(widget.currentUser.img!) as ImageProvider // Ảnh cũ từ server
+                              : null,
+                          child: (_selectedImage == null && (widget.currentUser.img == null || !widget.currentUser.img!.startsWith('http')))
+                              ? const Icon(Icons.person, size: 60, color: Colors.indigo)
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0, right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(color: Colors.indigo, shape: BoxShape.circle),
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 40),
-                  _buildCardForm(),
+
+                  // Form Fields
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: "Họ và tên",
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (v) => v!.trim().isEmpty ? "Không được để trống" : null,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _addressController,
+                    decoration: InputDecoration(
+                      labelText: "Địa chỉ",
+                      prefixIcon: const Icon(Icons.location_on_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (v) => v!.trim().isEmpty ? "Không được để trống" : null,
+                  ),
                   const SizedBox(height: 40),
-                  _buildSaveButton(),
+
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : _updateProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text("LƯU THAY ĐỔI", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
-          // Loading Overlay
+
+          // Overlay loading
           if (isLoading)
             Container(
-              color: Colors.black45,
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAvatarHeader() {
-    return Center(
-      child: GestureDetector(
-        onTap: _pickImage,
-        child: Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: Colors.indigo.shade50,
-                backgroundImage: _selectedImage != null
-                    ? FileImage(_selectedImage!)
-                    : (widget.currentUser.img != null && widget.currentUser.img!.isNotEmpty)
-                    ? NetworkImage(widget.currentUser.img!) as ImageProvider
-                    : null,
-                child: (_selectedImage == null && (widget.currentUser.img == null || widget.currentUser.img!.isEmpty))
-                    ? const Icon(Icons.person, size: 60, color: Colors.indigo)
-                    : null,
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 4,
-              child: CircleAvatar(
-                backgroundColor: Colors.indigo,
-                radius: 18,
-                child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardForm() {
-    return Card(
-      elevation: 8,
-      shadowColor: Colors.black26,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: "Họ và tên",
-                prefixIcon: const Icon(Icons.person_outline, color: Colors.indigo),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.indigo, width: 2),
-                ),
-              ),
-              validator: (v) => v!.trim().isEmpty ? "Vui lòng nhập họ tên" : null,
-            ),
-            const SizedBox(height: 25),
-            TextFormField(
-              controller: _addressController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: "Địa chỉ",
-                prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.indigo),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.indigo, width: 2),
-                ),
-              ),
-              validator: (v) => v!.trim().isEmpty ? "Vui lòng nhập địa chỉ" : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return ElevatedButton(
-      onPressed: isLoading ? null : _updateProfile,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 60),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        elevation: 5,
-      ),
-      child: const Text(
-        "LƯU THAY ĐỔI",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
       ),
     );
   }
