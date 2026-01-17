@@ -1,3 +1,4 @@
+import 'dart:io'; // Cần thêm thư viện này để dùng File
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shopsense_new/models/customer.dart';
@@ -30,17 +31,22 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
+    // Tự động tải profile khi vào trang
     _refreshProfile();
   }
 
-  // Cải tiến: Thêm option truyền trực tiếp data để tránh gọi API nếu không cần
   void _refreshProfile({Customer? updatedData}) {
     if (mounted) {
       setState(() {
         if (updatedData != null) {
+          // Nếu có data mới từ trang Edit trả về -> Dùng luôn (hiển thị ngay lập tức)
           _profileFuture = Future.value(updatedData);
         } else {
-          _profileFuture = customerProfile();
+          // Nếu không -> Gọi API tải lại từ đầu
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          if (auth.userId.isNotEmpty) {
+            _profileFuture = customerProfile();
+          }
         }
       });
     }
@@ -52,9 +58,9 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  /// --- UI KHI CHƯA ĐĂNG NHẬP ---
+  // --- VIEW 1: CHƯA ĐĂNG NHẬP ---
   Widget _buildNotLoggedInView() {
-    return Scaffold( // Thêm Scaffold để đồng bộ layout
+    return Scaffold(
       backgroundColor: Colors.indigo,
       body: Center(
         child: FadeTransition(
@@ -62,30 +68,27 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.account_circle, color: Colors.white, size: 100),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.person_off_rounded, color: Colors.white, size: 80),
+              ),
               const SizedBox(height: 20),
-              const Text(
-                "Chào bạn!",
-                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const Text(
-                "Đăng nhập để trải nghiệm đầy đủ tính năng",
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
+              const Text("Chào bạn!", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text("Đăng nhập để xem hồ sơ của bạn", style: TextStyle(color: Colors.white70)),
               const SizedBox(height: 40),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.indigo,
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  elevation: 8,
                 ),
                 onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AuthView()),
+                    context,
+                    MaterialPageRoute(builder: (context) => const AuthView())
                 ).then((_) => _refreshProfile()),
-                child: const Text("ĐĂNG NHẬP / ĐĂNG KÝ", style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text("ĐĂNG NHẬP NGAY", style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -94,66 +97,34 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
     );
   }
 
-  /// --- UI CARD CHỨC NĂNG ---
-  Widget _buildActionCard(String title, IconData icon, VoidCallback onTap) {
-    return ScaleTransition(
-      scale: _fadeIn,
-      child: Card(
-        elevation: 1, // Giảm shadow để giao diện hiện đại hơn
-        shadowColor: Colors.black12,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 28, color: Colors.indigo),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// --- UI CHÍNH KHI ĐÃ ĐĂNG NHẬP ---
+  // --- VIEW 2: ĐÃ ĐĂNG NHẬP (PROFILE CHÍNH) ---
   Widget _buildProfileView() {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.indigo,
-        title: const Text("Tài khoản của tôi", style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text("Tài khoản", style: TextStyle(fontWeight: FontWeight.bold)),
+        foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh),
             onPressed: () => _refreshProfile(),
           )
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => _refreshProfile(),
+        color: Colors.indigo,
         child: FutureBuilder<Customer>(
           future: _profileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildLoadingSkeleton();
+              return const Center(child: CircularProgressIndicator(color: Colors.indigo));
             }
             if (snapshot.hasError) {
-              return _buildErrorView();
+              return Center(child: Text("Lỗi kết nối: ${snapshot.error}"));
             }
             if (!snapshot.hasData) return const SizedBox.shrink();
 
@@ -166,104 +137,106 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildMainContent(Customer user) {
+
+    // Hàm hỗ trợ lấy ảnh (URL mạng hoặc File máy)
+    ImageProvider? getAvatarImage() {
+      if (user.img == null || user.img!.isEmpty) return null;
+
+      if (user.img!.startsWith('http')) {
+        // Trường hợp 1: Ảnh từ Server
+        return NetworkImage("${user.img}?t=${DateTime.now().millisecondsSinceEpoch}");
+      } else {
+        // Trường hợp 2: Ảnh cục bộ vừa cập nhật (không có http)
+        return FileImage(File(user.img!));
+      }
+    }
+
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         children: [
-          // Header Indigo với đường cong
+          // Header
           Stack(
-            clipBehavior: Clip.none,
             alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
               Container(
-                height: 80,
+                height: 100,
                 decoration: const BoxDecoration(
                   color: Colors.indigo,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(50),
-                    bottomRight: Radius.circular(50),
-                  ),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(40)),
                 ),
               ),
               Positioned(
-                top: 10,
-                child: Column(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2)],
-                      ),
-                      child: CircleAvatar(
-                        radius: 55,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: (user.img != null && user.img!.isNotEmpty)
-                            ? NetworkImage("${user.img}?t=${DateTime.now().millisecondsSinceEpoch}") // Chống cache ảnh
-                            : const AssetImage('assets/images/avatar_placeholder.png') as ImageProvider,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      user.name ?? "Người dùng Sense",
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                    ),
-                    Text(
-                      user.email ?? "",
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600], letterSpacing: 0.5),
-                    ),
-                  ],
+                bottom: -50,
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                  ),
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey[200],
+                    // SỬ DỤNG HÀM XỬ LÝ ẢNH MỚI
+                    backgroundImage: getAvatarImage(),
+                    child: (user.img == null || user.img!.isEmpty)
+                        ? const Icon(Icons.person, size: 50, color: Colors.grey) : null,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 60),
 
-          const SizedBox(height: 140), // Khoảng cách cho avatar lồi ra
+          Text(
+            user.name ?? "Người dùng",
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          Text(user.email ?? "", style: TextStyle(color: Colors.grey[600])),
 
-          // Grid chức năng
+          const SizedBox(height: 30),
+
+          // Grid Options
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 15,
               crossAxisSpacing: 15,
-              childAspectRatio: 1.1,
-              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1.2,
               children: [
                 _buildActionCard("Đơn Hàng", Icons.local_shipping_outlined, () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const OrdersView()));
                 }),
-                _buildActionCard("Chỉnh Sửa", Icons.manage_accounts_outlined, () async {
-                  // Logic: Chỉ mở trang edit khi lấy được dữ liệu mới nhất
-                  final freshProfile = await customerProfile();
-                  if (!mounted) return;
 
+                // NÚT CHỈNH SỬA
+                _buildActionCard("Chỉnh Sửa", Icons.manage_accounts_outlined, () async {
+                  // Chuyển sang màn hình Edit và CHỜ kết quả trả về
                   final result = await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => EditProfileView(currentUser: freshProfile))
+                      MaterialPageRoute(builder: (context) => EditProfileView(currentUser: user))
                   );
 
-                  // Cải tiến: Nếu edit trả về Customer object, dùng luôn không cần gọi API lại
+                  // Nếu màn hình Edit trả về một Customer object -> Cập nhật ngay
                   if (result != null && result is Customer) {
                     _refreshProfile(updatedData: result);
-                  } else if (result == true) {
-                    _refreshProfile();
                   }
                 }),
+
                 _buildActionCard("Yêu Thích", Icons.favorite_border_rounded, () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const WishlistScreen()));
                 }),
                 _buildActionCard("Địa Chỉ", Icons.location_on_outlined, () {
-                  // TODO: Implement Address Manager
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tính năng đang phát triển")));
                 }),
               ],
             ),
           ),
 
           const SizedBox(height: 40),
-
-          // Nút Đăng xuất
           _buildLogoutButton(),
           const SizedBox(height: 30),
         ],
@@ -271,22 +244,26 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildLoadingSkeleton() {
-    return const Center(
-      child: CircularProgressIndicator(color: Colors.indigo, strokeWidth: 3),
-    );
-  }
-
-  Widget _buildErrorView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, size: 60, color: Colors.red[300]),
-          const SizedBox(height: 16),
-          const Text("Không thể tải thông tin cá nhân"),
-          TextButton(onPressed: () => _refreshProfile(), child: const Text("Thử lại")),
-        ],
+  Widget _buildActionCard(String title, IconData icon, VoidCallback onTap) {
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.indigo.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.indigo, size: 28),
+            ),
+            const SizedBox(height: 10),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          ],
+        ),
       ),
     );
   }
@@ -294,37 +271,38 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
   Widget _buildLogoutButton() {
     return Consumer<AuthProvider>(
       builder: (context, auth, child) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: TextButton.icon(
-          onPressed: () => _confirmLogout(auth),
-          icon: const Icon(Icons.logout_rounded, color: Colors.red),
-          label: const Text("ĐĂNG XUẤT", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, letterSpacing: 1)),
-          style: TextButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50),
-            backgroundColor: Colors.red.withOpacity(0.05),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: TextButton.icon(
+            onPressed: () {
+              showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text("Đăng xuất?"),
+                    content: const Text("Bạn có muốn đăng xuất khỏi tài khoản này?"),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("HỦY")),
+                      TextButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            auth.logout();
+                          },
+                          child: const Text("ĐĂNG XUẤT", style: TextStyle(color: Colors.red))
+                      ),
+                    ],
+                  )
+              );
+            },
+            icon: const Icon(Icons.logout, color: Colors.red),
+            label: const Text("ĐĂNG XUẤT", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.red.withOpacity(0.05),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _confirmLogout(AuthProvider auth) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Đăng xuất?"),
-        content: const Text("Bạn có chắc chắn muốn thoát khỏi tài khoản này?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("HỦY")),
-          TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                auth.logout();
-              },
-              child: const Text("ĐĂNG XUẤT", style: TextStyle(color: Colors.red))
-          ),
-        ],
       ),
     );
   }
