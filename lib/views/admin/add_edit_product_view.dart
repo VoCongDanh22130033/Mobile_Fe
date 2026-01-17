@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shopsense_new/models/product.dart';
 import 'package:shopsense_new/repository/admin_product_repo.dart';
-import 'package:shopsense_new/repository/file_repo.dart';
 import 'package:shopsense_new/util/constants.dart';
 
 class AddEditProductView extends StatefulWidget {
@@ -17,129 +16,103 @@ class AddEditProductView extends StatefulWidget {
 class _AddEditProductViewState extends State<AddEditProductView> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController titleCtrl;
-  late TextEditingController priceCtrl;
+  late TextEditingController descriptionCtrl;
+  late TextEditingController regularPriceCtrl;
+  late TextEditingController salePriceCtrl;
+  late TextEditingController stockCountCtrl;
+  
+  String selectedCategory = "Phone";
+  String selectedStockStatus = "IN_STOCK";
+  String selectedStatus = "ACTIVE";
   File? _selectedImage;
-  String? _imageUrl; // URL của ảnh đã upload hoặc ảnh hiện tại
+  String? _imageUrl;
   bool _isUploading = false;
+
+  final List<String> categories = ["Phone", "Laptop", "Watch", "Tablet", "Other"];
+  final List<String> stockStatuses = ["IN_STOCK", "OUT_OF_STOCK", "LOW_STOCK"];
+  final List<String> statuses = ["ACTIVE", "INACTIVE", "PENDING"];
 
   @override
   void initState() {
     super.initState();
-    titleCtrl = TextEditingController(text: widget.product?.title ?? "");
-    priceCtrl = TextEditingController(text: widget.product?.regularPrice ?? "");
-    // Nếu đang sửa, lấy URL ảnh hiện tại
-    if (widget.product != null && widget.product!.thumbnailUrl.isNotEmpty) {
-      _imageUrl = widget.product!.thumbnailUrl;
+    final p = widget.product;
+    titleCtrl = TextEditingController(text: p?.title ?? "");
+    descriptionCtrl = TextEditingController(text: p?.description ?? "");
+    regularPriceCtrl = TextEditingController(text: p?.regularPrice ?? "");
+    salePriceCtrl = TextEditingController(text: p?.salePrice ?? p?.regularPrice ?? "");
+    stockCountCtrl = TextEditingController(text: p?.stockCount ?? "10");
+    
+    if (p != null) {
+      selectedCategory = p.category.isNotEmpty ? p.category : "Phone";
+      selectedStockStatus = p.stockStatus.isNotEmpty ? p.stockStatus : "IN_STOCK";
+      selectedStatus = p.status.isNotEmpty ? p.status : "ACTIVE";
+      _imageUrl = p.thumbnailUrl.isNotEmpty ? p.thumbnailUrl : null;
     }
   }
 
   Future<void> _pickImage() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-      );
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
 
-      if (result != null && result.files.single.path != null) {
-        setState(() {
-          _selectedImage = File(result.files.single.path!);
-          _imageUrl = null; // Reset URL khi chọn ảnh mới
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi chọn ảnh: $e")),
-        );
-      }
-    }
-  }
-
-  Future<void> _uploadImage() async {
-    if (_selectedImage == null) return;
-
-    setState(() {
-      _isUploading = true;
-    });
-
-    try {
-      final uploadedUrl = await uploadFile(_selectedImage!);
-      if (uploadedUrl != null) {
-        setState(() {
-          _imageUrl = uploadedUrl;
-          _isUploading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Upload ảnh thành công!")),
-          );
-        }
-      } else {
-        setState(() {
-          _isUploading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Upload ảnh thất bại!")),
-          );
-        }
-      }
-    } catch (e) {
+    if (result != null && result.files.single.path != null) {
       setState(() {
-        _isUploading = false;
+        _selectedImage = File(result.files.single.path!);
+        _imageUrl = null; // Clear old URL when new image is selected
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi upload: $e")),
-        );
-      }
     }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Nếu có ảnh mới chọn nhưng chưa upload, upload trước
-    if (_selectedImage != null && _imageUrl == null) {
-      await _uploadImage();
-      if (_imageUrl == null) {
+    setState(() => _isUploading = true);
+
+    String? thumbnailUrl = _imageUrl; // Use existing URL if no new image
+
+    // Upload new image if selected
+    if (_selectedImage != null) {
+      thumbnailUrl = await uploadImage(_selectedImage!);
+      if (thumbnailUrl == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Vui lòng upload ảnh trước khi lưu!")),
+            const SnackBar(content: Text("Lỗi upload ảnh")),
           );
+          setState(() => _isUploading = false);
         }
         return;
       }
     }
 
-    // Nếu không có ảnh mới và không có URL, dùng URL cũ hoặc rỗng
-    String thumbnailUrl = _imageUrl ?? widget.product?.thumbnailUrl ?? "";
-
     final product = Product(
       id: widget.product?.id ?? 0,
       title: titleCtrl.text,
-      regularPrice: priceCtrl.text,
-      salePrice: priceCtrl.text,
-      thumbnailUrl: thumbnailUrl,
-      description: "",
-      category: "Phone",
-      stockStatus: "IN_STOCK",
-      stockCount: "10",
+      regularPrice: regularPriceCtrl.text,
+      salePrice: salePriceCtrl.text.isEmpty ? regularPriceCtrl.text : salePriceCtrl.text,
+      thumbnailUrl: thumbnailUrl ?? "",
+      description: descriptionCtrl.text,
+      category: selectedCategory,
+      stockStatus: selectedStockStatus,
+      stockCount: stockCountCtrl.text,
       sellerId: 1,
       storeName: "Admin Store",
-      status: "ACTIVE",
+      status: selectedStatus,
     );
 
     final ok = widget.product == null
         ? await adminAddProduct(product)
         : await adminUpdateProduct(product);
 
-    if (ok && mounted) {
-      Navigator.pop(context, true);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lưu sản phẩm thất bại!")),
-      );
+    if (mounted) {
+      setState(() => _isUploading = false);
+      if (ok) {
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Lỗi lưu sản phẩm")),
+        );
+      }
     }
   }
 
@@ -147,103 +120,119 @@ class _AddEditProductViewState extends State<AddEditProductView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.product == null ? "Thêm sản phẩm" : "Sửa sản phẩm")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              // Ảnh sản phẩm
-              const SizedBox(height: 10),
-              const Text(
-                "Ảnh sản phẩm",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _isUploading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _selectedImage != null
-                          ? Image.file(
-                              _selectedImage!,
-                              fit: BoxFit.cover,
-                            )
-                          : _imageUrl != null && _imageUrl!.isNotEmpty
-                              ? Image.network(
-                                  getImageUrl(_imageUrl),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Center(
-                                      child: Icon(Icons.broken_image, size: 50),
-                                    );
-                                  },
-                                )
-                              : const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.add_photo_alternate, size: 50),
-                                      SizedBox(height: 8),
-                                      Text("Chọn ảnh sản phẩm"),
-                                    ],
+      body: _isUploading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Image picker
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: _selectedImage != null
+                            ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                            : _imageUrl != null && _imageUrl!.isNotEmpty
+                                ? Image.network(getImageUrl(_imageUrl), fit: BoxFit.cover)
+                                : const Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey),
+                                        SizedBox(height: 8),
+                                        Text("Chọn ảnh sản phẩm"),
+                                      ],
+                                    ),
                                   ),
-                                ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Title
+                    TextFormField(
+                      controller: titleCtrl,
+                      decoration: const InputDecoration(labelText: "Tên sản phẩm *"),
+                      validator: (v) => v!.isEmpty ? "Không được để trống" : null,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Description
+                    TextFormField(
+                      controller: descriptionCtrl,
+                      decoration: const InputDecoration(labelText: "Mô tả"),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Category
+                    DropdownButtonFormField<String>(
+                      value: selectedCategory,
+                      decoration: const InputDecoration(labelText: "Danh mục"),
+                      items: categories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+                      onChanged: (v) => setState(() => selectedCategory = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Regular Price
+                    TextFormField(
+                      controller: regularPriceCtrl,
+                      decoration: const InputDecoration(labelText: "Giá gốc *"),
+                      keyboardType: TextInputType.number,
+                      validator: (v) => v!.isEmpty ? "Không được để trống" : null,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Sale Price
+                    TextFormField(
+                      controller: salePriceCtrl,
+                      decoration: const InputDecoration(labelText: "Giá khuyến mãi"),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Stock Count
+                    TextFormField(
+                      controller: stockCountCtrl,
+                      decoration: const InputDecoration(labelText: "Số lượng tồn kho"),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Stock Status
+                    DropdownButtonFormField<String>(
+                      value: selectedStockStatus,
+                      decoration: const InputDecoration(labelText: "Trạng thái tồn kho"),
+                      items: stockStatuses.map((status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
+                      onChanged: (v) => setState(() => selectedStockStatus = v!),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Status
+                    DropdownButtonFormField<String>(
+                      value: selectedStatus,
+                      decoration: const InputDecoration(labelText: "Trạng thái"),
+                      items: statuses.map((status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
+                      onChanged: (v) => setState(() => selectedStatus = v!),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Save Button
+                    ElevatedButton(
+                      onPressed: _save,
+                      child: const Text("Lưu"),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              if (_selectedImage != null && _imageUrl == null)
-                ElevatedButton.icon(
-                  onPressed: _isUploading ? null : _uploadImage,
-                  icon: _isUploading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload),
-                  label: Text(_isUploading ? "Đang upload..." : "Upload ảnh"),
-                ),
-              const SizedBox(height: 20),
-              // Tên sản phẩm
-              TextFormField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(labelText: "Tên sản phẩm"),
-                validator: (v) => v!.isEmpty ? "Không được để trống" : null,
-              ),
-              const SizedBox(height: 16),
-              // Giá
-              TextFormField(
-                controller: priceCtrl,
-                decoration: const InputDecoration(labelText: "Giá"),
-                keyboardType: TextInputType.number,
-                validator: (v) => v!.isEmpty ? "Không được để trống" : null,
-              ),
-              const SizedBox(height: 30),
-              // Nút lưu
-              ElevatedButton(
-                onPressed: _isUploading ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isUploading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text("Lưu"),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
