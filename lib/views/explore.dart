@@ -8,6 +8,7 @@ import 'package:shopsense_new/util/constants.dart';
 import 'package:shopsense_new/views/cart_view.dart';
 import 'package:shopsense_new/views/product_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shopsense_new/models/category.dart';
 
 class Explore extends StatefulWidget {
   const Explore({super.key});
@@ -17,9 +18,28 @@ class Explore extends StatefulWidget {
 }
 
 class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
-  final List<String> categories = ["Tất cả", "Đồng Hồ", "Điện Thoại", "Laptop"];
-  String selectedCategory = "Tất Cả";
+  final List<Category> categories = [
+    Category(id: 0, name: "Tất Cả"),
+    Category(id: 1, name: "Đồng Hồ"),
+    Category(id: 2, name: "Điện Thoại"),
+    Category(id: 3, name: "Laptop"),
+  ];
 
+  int selectedCategoryId = 0;
+
+  String _formatPrice(int price) {
+    final String priceStr = price.toString();
+    final StringBuffer buffer = StringBuffer();
+
+    for (int i = 0; i < priceStr.length; i++) {
+      buffer.write(priceStr[i]);
+      int remaining = priceStr.length - i - 1;
+      if (remaining > 0 && remaining % 3 == 0) {
+        buffer.write('.');
+      }
+    }
+    return buffer.toString();
+  }
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -75,8 +95,12 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
     }
 
     try {
-      final newProducts =
-      await fetchProductsByCategory(selectedCategory, currentPage);
+      final newProducts = await fetchProductsByCategoryId(
+        categoryId: selectedCategoryId,
+        page: currentPage,
+        size: 10,
+      );
+
       if (!mounted) return;
 
       setState(() {
@@ -94,13 +118,17 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
     }
   }
 
-  void _onCategorySelected(String category) {
-    if (selectedCategory == category) return;
+
+  void _onCategorySelected(int categoryId) {
+    if (selectedCategoryId == categoryId) return;
+
     setState(() {
-      selectedCategory = category;
+      selectedCategoryId = categoryId;
     });
+
     _fetchProducts(reset: true);
   }
+
 
   // ✅ HÀM TIỆN ÍCH ĐỂ CHUẨN HÓA VÀ TRẢ VỀ GIÁ TRỊ KIỂU INT
   int _parsePrice(String price) {
@@ -276,11 +304,13 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
-                final isSelected = selectedCategory == category;
+                final isSelected = selectedCategoryId == category.id;
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: GestureDetector(
-                    onTap: () => _onCategorySelected(category),
+                    onTap: () => _onCategorySelected(category.id),
+
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       padding: const EdgeInsets.symmetric(
@@ -295,13 +325,14 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                         border: Border.all(color: Colors.indigo),
                       ),
                       child: Text(
-                        category,
+                        category.name,
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.indigo,
                           fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
                       ),
+
                     ),
                   ),
                 );
@@ -343,8 +374,6 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                     // ✅ Lấy giá trị số nguyên đã chuẩn hóa
                     final int salePriceValue =
                     _parsePrice(product.salePrice);
-                    final int regularPriceValue =
-                    _parsePrice(product.regularPrice);
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -413,31 +442,14 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8),
-                              child: Row(
-                                mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // ✅ Hiển thị Sale Price (kiểu int)
-                                  Text(
-                                    "${salePriceValue} VNĐ",
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.redAccent,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  // ✅ Hiển thị Regular Price (kiểu int)
-                                  Text(
-                                    "${regularPriceValue} VNĐ",
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.black54,
-                                      decoration:
-                                      TextDecoration.lineThrough,
-                                    ),
-                                  ),
-                                ],
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                "${_formatPrice(salePriceValue)} VNĐ",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             Padding(
