@@ -15,7 +15,7 @@ class _AddEditUserViewState extends State<AddEditUserView> {
   late TextEditingController nameCtrl;
   late TextEditingController emailCtrl;
   late TextEditingController passwordCtrl;
-  String role = "USER";
+  String role = "CUSTOMER";
 
   @override
   void initState() {
@@ -23,7 +23,7 @@ class _AddEditUserViewState extends State<AddEditUserView> {
     nameCtrl = TextEditingController(text: widget.user?.name ?? "");
     emailCtrl = TextEditingController(text: widget.user?.email ?? "");
     passwordCtrl = TextEditingController();
-    role = widget.user?.role ?? "USER";
+    role = widget.user?.role ?? "CUSTOMER";
   }
 
   Future<void> _save() async {
@@ -75,7 +75,7 @@ class _AddEditUserViewState extends State<AddEditUserView> {
             DropdownButtonFormField<String>(
               value: role,
               items: const [
-                DropdownMenuItem(value: "USER", child: Text("USER")),
+                DropdownMenuItem(value: "CUSTOMER", child: Text("CUSTOMER")),
                 DropdownMenuItem(value: "ADMIN", child: Text("ADMIN")),
               ],
               onChanged: (v) => setState(() => role = v!),
