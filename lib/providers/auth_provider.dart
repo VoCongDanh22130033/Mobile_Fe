@@ -33,7 +33,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ========= GOOGLE LOGIN =========
+  ///GOOGLE LOGIN
   Future<String> loginWithGoogleFirebase() async {
     final GoogleSignInAccount? googleUser =
     await GoogleSignIn().signIn();
@@ -61,7 +61,7 @@ class AuthProvider extends ChangeNotifier {
     return idToken;
   }
 
-  /// ========= FACEBOOK LOGIN =========
+  ///FACEBOOK LOGIN
   Future<String> loginWithFacebookFirebase() async {
     final LoginResult result = await FacebookAuth.instance.login(
       permissions: ['email', 'public_profile'],
@@ -87,7 +87,7 @@ class AuthProvider extends ChangeNotifier {
     return idToken;
   }
 
-  /// ========= LOGOUT =========
+  ///LOGOUT
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');

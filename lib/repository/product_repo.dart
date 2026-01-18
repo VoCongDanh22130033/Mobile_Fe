@@ -12,15 +12,19 @@ Future<List<Product>> fetchProducts() async {
   final response = await http.get(url);
 
   if (response.statusCode == 200) {
-    try {
-      return productsFromJson(response.body);
-    } catch (e) {
-      throw Exception('Lỗi parse JSON sản phẩm: $e');
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is List) {
+      return decoded.map((e) => Product.fromJson(e)).toList();
     }
+
+    throw Exception("API không trả List");
   } else {
-    throw Exception('Không thể tải danh sách sản phẩm (mã lỗi: ${response.statusCode})');
+    throw Exception("HTTP ${response.statusCode}");
   }
 }
+
+
 
 Future<Product> fetchProduct(String id) async {
   final url = Uri.parse('${ApiConfig.baseUrl}/product/$id');
@@ -50,7 +54,7 @@ Future<List<Product>> fetchProductsByCategory(String category, int page) async {
         "Laptop": 3,
       };
 
-      final int categoryId = categoryMap[category] ?? 1;
+  final response = await http.get(uri);
 
       url = Uri.parse(
           '${ApiConfig.baseUrl}/category/products?categoryId=$categoryId&page=$page&pageSize=$pageSize');

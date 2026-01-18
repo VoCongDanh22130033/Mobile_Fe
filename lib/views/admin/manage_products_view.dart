@@ -1,50 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:shopsense_new/models/product.dart';
+import 'package:shopsense_new/repository/admin_product_repo.dart';
+import 'add_edit_product_view.dart';
 
-class ManageProductsView extends StatelessWidget {
+class ManageProductsView extends StatefulWidget {
   const ManageProductsView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final products = [
-      {'name': 'Tai nghe Bluetooth', 'price': '450,000đ'},
-      {'name': 'Chuột gaming', 'price': '520,000đ'},
-    ];
+  State<ManageProductsView> createState() => _ManageProductsViewState();
+}
 
+class _ManageProductsViewState extends State<ManageProductsView> {
+  late Future<List<Product>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = adminFetchProducts();
+  }
+
+  void _reload() {
+    setState(() {
+      future = adminFetchProducts();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Quản lý sản phẩm')),
+      appBar: AppBar(title: const Text("Quản lý sản phẩm")),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: thêm sản phẩm
+        onPressed: () async {
+          final r = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddEditProductView()),
+          );
+          if (r == true) _reload();
         },
         child: const Icon(Icons.add),
       ),
-      body: ListView.builder(
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final p = products[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: ListTile(
-              title: Text(p['name']!),
-              subtitle: Text('Giá: ${p['price']}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () {
-                      // TODO: sửa sản phẩm
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      // TODO: xóa sản phẩm
-                    },
-                  ),
-                ],
-              ),
-            ),
+      body: FutureBuilder<List<Product>>(
+        future: future,
+        builder: (c, s) {
+          if (s.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (s.hasError) return Center(child: Text(s.error.toString()));
+
+          final products = s.data!;
+          return ListView.builder(
+            itemCount: products.length,
+            itemBuilder: (c, i) {
+              final p = products[i];
+              return ListTile(
+                title: Text(p.title),
+                subtitle: Text("Giá: ${p.regularPrice}"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final r = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AddEditProductView(product: p),
+                          ),
+                        );
+                        if (r == true) _reload();
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () async {
+                        await adminDeleteProduct(p.id);
+                        _reload();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),

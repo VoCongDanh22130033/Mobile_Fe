@@ -9,9 +9,7 @@ import 'package:shopsense_new/models/place_order.dart';
 import 'package:shopsense_new/models/wishlist.dart';
 import 'package:shopsense_new/util/constants.dart';
 
-/// =======================
 /// AUTH
-/// =======================
 
 Future<String?> login(String email, String password) async {
   final url = Uri.parse('${ApiConfig.baseUrl}/customer/login');
@@ -158,6 +156,7 @@ Future<List<CartItem>> customerCart() async {
   } else {
     throw Exception("Không lấy được giỏ hàng");
   }
+  return [];
 }
 
 Future<bool> customerAddToCart(CartItem c) async {
@@ -175,6 +174,7 @@ Future<bool> customerAddToCart(CartItem c) async {
 Future<bool> customerUpdateCart(CartItem item) async {
   final headers = await _authHeader();
 
+Future<bool> customerUpdateCart(CartItem item) async {
   final response = await http.put(
     Uri.parse('${ApiConfig.baseUrl}/customer/cart'),
     headers: headers,

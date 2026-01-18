@@ -18,6 +18,7 @@ class AuthView extends StatefulWidget {
 class _AuthViewState extends State<AuthView>
     with SingleTickerProviderStateMixin {
   bool isLogin = true;
+  bool _isLoading = false; // Trạng thái chờ xử lý API
 
   final TextEditingController _name = TextEditingController();
   final TextEditingController _email = TextEditingController();
@@ -88,12 +89,28 @@ class _AuthViewState extends State<AuthView>
         context,
         MaterialPageRoute(builder: (_) => const AdminHomeView()),
       );
-    } else {
+
+      Customer? loggedInUser = await customerSignin(loginUser);
+
+      if (loggedInUser == null) {
+        showMessage("Email hoặc mật khẩu không chính xác");
+        return;
+      }
+
+      // Cập nhật Provider (Dùng await nếu updateUserId trả về Future)
+      await context.read<AuthProvider>().updateUserId();
+
+      if (!mounted) return;
+
+      // Điều hướng dựa trên Role
+      Widget destination = (loggedInUser.role == "ADMIN")
+          ? const AdminHomeView()
+          : const Home();
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const Home()),
+        MaterialPageRoute(builder: (_) => destination),
       );
-    }
 
     showMessage("Welcome, ${customer.name}!");
   }
@@ -179,9 +196,7 @@ class _AuthViewState extends State<AuthView>
     }
   }
 
-  // ======================
   // SIGNUP
-  // ======================
   Future<void> signup() async {
     final Customer c = Customer(
       id: 0,
@@ -213,7 +228,9 @@ class _AuthViewState extends State<AuthView>
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: gradient),
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(gradient: gradient),
         child: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnimation,
@@ -246,11 +263,10 @@ class _AuthViewState extends State<AuthView>
     );
   }
 
-  // ======================
   // UI
-  // ======================
   Widget _buildLoginForm() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           "Welcome Back 👋",
@@ -264,25 +280,27 @@ class _AuthViewState extends State<AuthView>
 
         TextField(
           controller: _emailLogin,
+          keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(
             labelText: "Email",
             prefixIcon: Icon(Icons.email_outlined),
+            border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 10),
-
+        const SizedBox(height: 15),
         TextField(
           controller: _passwordLogin,
           obscureText: true,
           decoration: const InputDecoration(
             labelText: "Password",
             prefixIcon: Icon(Icons.lock_outline),
+            border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 20),
-
-        //Login thường
-        ElevatedButton(
+        const SizedBox(height: 25),
+        _isLoading
+            ? const CircularProgressIndicator()
+            : ElevatedButton(
           onPressed: signin,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.indigo,
@@ -292,7 +310,7 @@ class _AuthViewState extends State<AuthView>
               borderRadius: BorderRadius.circular(30),
             ),
           ),
-          child: const Text("Login", style: TextStyle(fontSize: 18)),
+          child: const Text("LOGIN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
 
         const SizedBox(height: 12),
@@ -344,50 +362,24 @@ class _AuthViewState extends State<AuthView>
 
   Widget _buildSignupForm() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           "Create Account ✨",
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: Colors.indigo,
-          ),
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.indigo),
         ),
         const SizedBox(height: 20),
-        TextField(
-          controller: _name,
-          decoration: const InputDecoration(
-            labelText: "Name",
-            prefixIcon: Icon(Icons.person_outline),
-          ),
-        ),
+        _buildTextField(_name, "Name", Icons.person_outline),
         const SizedBox(height: 10),
-        TextField(
-          controller: _email,
-          decoration: const InputDecoration(
-            labelText: "Email",
-            prefixIcon: Icon(Icons.email_outlined),
-          ),
-        ),
+        _buildTextField(_email, "Email", Icons.email_outlined, keyboardType: TextInputType.emailAddress),
         const SizedBox(height: 10),
-        TextField(
-          controller: _password,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: "Password",
-            prefixIcon: Icon(Icons.lock_outline),
-          ),
-        ),
+        _buildTextField(_password, "Password", Icons.lock_outline, obscureText: true),
         const SizedBox(height: 10),
-        TextField(
-          controller: _address,
-          decoration: const InputDecoration(
-            labelText: "Address",
-            prefixIcon: Icon(Icons.home_outlined),
-          ),
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
+        _buildTextField(_address, "Address", Icons.home_outlined),
+        const SizedBox(height: 25),
+        _isLoading
+            ? const CircularProgressIndicator()
+            : ElevatedButton(
           onPressed: signup,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.indigo,
@@ -397,13 +389,27 @@ class _AuthViewState extends State<AuthView>
               borderRadius: BorderRadius.circular(30),
             ),
           ),
-          child: const Text("Sign up", style: TextStyle(fontSize: 18)),
+          child: const Text("SIGN UP", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
+        const SizedBox(height: 10),
         TextButton(
           onPressed: () => setState(() => isLogin = true),
           child: const Text("Already have an account? Login"),
         ),
       ],
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool obscureText = false, TextInputType? keyboardType}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+      ),
     );
   }
 }

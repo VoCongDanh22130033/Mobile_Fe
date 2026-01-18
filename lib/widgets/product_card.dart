@@ -16,9 +16,9 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4.0, // Add a shadow to the card
+      elevation: 4.0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0), // Rounded corners
+        borderRadius: BorderRadius.circular(16.0),
       ),
       child: Column(
         children: <Widget>[
