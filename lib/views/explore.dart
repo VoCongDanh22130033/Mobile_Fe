@@ -145,17 +145,18 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _addToCart(Product product, int quantity) async {
-    // Chúng ta vẫn cần unitPrice là double để tính toán subTotal chính xác,
-    // trừ khi bạn chắc chắn không có xu/cent nào (giá luôn là số nguyên)
-    // Nếu muốn unitPrice là double: final double unitPrice = _parseDoublePrice(product.salePrice);
-
-    // Nếu bạn chắc chắn giá là số nguyên, dùng int:
-    final int unitPriceInt = _parsePrice(product.salePrice);
+    // Chọn giá để sử dụng: nếu salePrice rỗng hoặc 0, dùng regularPrice
+    String priceToUse = product.salePrice.isNotEmpty && _parsePrice(product.salePrice) > 0
+        ? product.salePrice
+        : product.regularPrice;
+    
+    // Parse giá thành double
+    final int unitPriceInt = _parsePrice(priceToUse);
     final double unitPrice = unitPriceInt.toDouble();
 
 
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '0';
+    final userId = prefs.getString('customerId') ?? prefs.getString('userId') ?? '0';
     final customerId = int.tryParse(userId) ?? 0;
 
     final cartItem = CartItem(
@@ -372,8 +373,11 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                     final product = products[index];
 
                     //Lấy giá trị số nguyên đã chuẩn hóa
-                    final int salePriceValue =
-                    _parsePrice(product.salePrice);
+                    // Nếu salePrice rỗng hoặc 0, dùng regularPrice
+                    String priceToUse = product.salePrice.isNotEmpty && _parsePrice(product.salePrice) > 0
+                        ? product.salePrice
+                        : product.regularPrice;
+                    final int salePriceValue = _parsePrice(priceToUse);
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(

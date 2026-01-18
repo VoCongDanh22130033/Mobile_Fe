@@ -4,8 +4,20 @@ CartItem cartItemFromJson(String str) => CartItem.fromJson(json.decode(str));
 
 String cartItemToJson(CartItem data) => json.encode(data.toJson());
 
-List<CartItem> cartItemListFromJson(String str) =>
-    List<CartItem>.from(json.decode(str).map((x) => CartItem.fromJson(x)));
+List<CartItem> cartItemListFromJson(String str) {
+  final decoded = json.decode(str);
+  if (decoded is List) {
+    return List<CartItem>.from(decoded.map((x) => CartItem.fromJson(x as Map<String, dynamic>)));
+  } else if (decoded is Map) {
+    // Nếu là Map, có thể có key chứa list
+    if (decoded.containsKey('data') && decoded['data'] is List) {
+      return List<CartItem>.from((decoded['data'] as List).map((x) => CartItem.fromJson(x as Map<String, dynamic>)));
+    }
+    // Nếu là Map đơn, thử convert thành list
+    return [CartItem.fromJson(decoded as Map<String, dynamic>)];
+  }
+  return [];
+}
 
 class CartItem {
   int id;
@@ -33,16 +45,20 @@ class CartItem {
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
-    id: json["id"],
-    customerId: json["customerId"],
-    productId: json["productId"],
-    sellerId: json["sellerId"],
-    storeName: json["storeName"],
-    productName: json["productName"],
-    productThumbnailUrl: json["productThumbnailUrl"],
-    productUnitPrice: json["productUnitPrice"]?.toDouble(),
-    productQuantity: json["productQuantity"],
-    subTotal: json["subTotal"]?.toDouble(),
+    id: json["id"] ?? 0,
+    customerId: json["customerId"] ?? 0,
+    productId: json["productId"] ?? 0,
+    sellerId: json["sellerId"] ?? 0,
+    storeName: json["storeName"]?.toString() ?? '',
+    productName: json["productName"]?.toString() ?? '',
+    productThumbnailUrl: json["productThumbnailUrl"]?.toString() ?? '',
+    productUnitPrice: (json["productUnitPrice"] is num)
+        ? (json["productUnitPrice"] as num).toDouble()
+        : double.tryParse(json["productUnitPrice"]?.toString() ?? '0') ?? 0.0,
+    productQuantity: json["productQuantity"] ?? 1,
+    subTotal: (json["subTotal"] is num)
+        ? (json["subTotal"] as num).toDouble()
+        : double.tryParse(json["subTotal"]?.toString() ?? '0') ?? 0.0,
   );
 
   Map<String, dynamic> toJson() => {

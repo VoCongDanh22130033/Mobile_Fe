@@ -15,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   String? get token => _token;
   Customer? get customer => _customer;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
+  String get userId => _customer?.id.toString() ?? '';
 
   /// Load token khi app start
   Future<void> loadAuth() async {

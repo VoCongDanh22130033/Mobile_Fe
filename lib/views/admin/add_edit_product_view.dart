@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shopsense_new/models/product.dart';
@@ -24,7 +26,9 @@ class _AddEditProductViewState extends State<AddEditProductView> {
   String selectedCategory = "Phone";
   String selectedStockStatus = "IN_STOCK";
   String selectedStatus = "ACTIVE";
-  File? _selectedImage;
+  File? _selectedImage; // For mobile
+  Uint8List? _selectedImageBytes; // For web
+  String? _selectedImageName; // File name
   String? _imageUrl;
   bool _isUploading = false;
 
@@ -56,9 +60,21 @@ class _AddEditProductViewState extends State<AddEditProductView> {
       allowMultiple: false,
     );
 
-    if (result != null && result.files.single.path != null) {
+    if (result != null && result.files.single.size > 0) {
       setState(() {
-        _selectedImage = File(result.files.single.path!);
+        if (kIsWeb) {
+          // Web: use bytes
+          _selectedImageBytes = result.files.single.bytes;
+          _selectedImageName = result.files.single.name;
+          _selectedImage = null;
+        } else {
+          // Mobile: use file path
+          if (result.files.single.path != null) {
+            _selectedImage = File(result.files.single.path!);
+            _selectedImageBytes = null;
+            _selectedImageName = result.files.single.name;
+          }
+        }
         _imageUrl = null; // Clear old URL when new image is selected
       });
     }
@@ -72,8 +88,13 @@ class _AddEditProductViewState extends State<AddEditProductView> {
     String? thumbnailUrl = _imageUrl; // Use existing URL if no new image
 
     // Upload new image if selected
-    if (_selectedImage != null) {
-      thumbnailUrl = await uploadImage(_selectedImage!);
+    if (_selectedImage != null || _selectedImageBytes != null) {
+      if (kIsWeb && _selectedImageBytes != null) {
+        thumbnailUrl = await uploadImageBytes(_selectedImageBytes!, _selectedImageName ?? 'image.jpg');
+      } else if (!kIsWeb && _selectedImage != null) {
+        thumbnailUrl = await uploadImage(_selectedImage!);
+      }
+      
       if (thumbnailUrl == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -138,10 +159,12 @@ class _AddEditProductViewState extends State<AddEditProductView> {
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: _selectedImage != null
+                        child: _selectedImageBytes != null
+                            ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                            : _selectedImage != null
                             ? Image.file(_selectedImage!, fit: BoxFit.cover)
                             : _imageUrl != null && _imageUrl!.isNotEmpty
-                                ? Image.network(getImageUrl(_imageUrl), fit: BoxFit.cover)
+                                ? Image.network(ApiConfig.getImageUrl(_imageUrl!), fit: BoxFit.cover)
                                 : const Center(
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,

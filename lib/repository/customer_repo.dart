@@ -12,6 +12,12 @@ import 'package:shopsense_new/util/constants.dart';
 /// AUTH
 
 Future<String?> login(String email, String password) async {
+  final result = await loginWithCustomer(email, password);
+  return result?['token'];
+}
+
+/// Login và trả về cả token và customer từ response
+Future<Map<String, dynamic>?> loginWithCustomer(String email, String password) async {
   final url = Uri.parse('${ApiConfig.baseUrl}/customer/login');
 
   final response = await http.post(
@@ -31,7 +37,25 @@ Future<String?> login(String email, String password) async {
   if (response.statusCode != 200) return null;
 
   final json = jsonDecode(response.body);
-  return json['token']; // backend có
+  
+  // Parse customer từ user object trong response
+  Customer? customer;
+  if (json['user'] != null) {
+    try {
+      customer = Customer.fromJson(json['user']);
+      // Nếu role nằm ở ngoài user object, lấy từ đó
+      if (json['role'] != null && customer.role.isEmpty) {
+        customer = customer.copyWith(role: json['role']);
+      }
+    } catch (e) {
+      print('Error parsing customer from login response: $e');
+    }
+  }
+  
+  return {
+    'token': json['token'],
+    'customer': customer,
+  };
 }
 
 /// SIGNUP
@@ -145,18 +169,44 @@ Future<List<Order>> customerOrders() async {
 
 Future<List<CartItem>> customerCart() async {
   final headers = await _authHeader();
+  
+  // Lấy customerId từ profile (có thể lưu trong SharedPreferences khi login)
+  final prefs = await SharedPreferences.getInstance();
+  String? customerIdStr = prefs.getString('customerId');
+  int? customerId;
+  
+  if (customerIdStr != null) {
+    customerId = int.tryParse(customerIdStr);
+  }
+  
+  // Nếu không có customerId, thử lấy từ profile
+  if (customerId == null) {
+    try {
+      final customer = await customerProfile();
+      customerId = customer.id;
+      await prefs.setString('customerId', customer.id.toString());
+    } catch (e) {
+      print('Cannot get customerId: $e');
+      return [];
+    }
+  }
 
-  final response = await http.get(
-    Uri.parse('${ApiConfig.baseUrl}/customer/cart'),
-    headers: headers,
-  );
+  // Endpoint yêu cầu id parameter
+  final url = Uri.parse('${ApiConfig.baseUrl}/customer/cart?id=$customerId');
+
+  final response = await http.get(url, headers: headers);
 
   if (response.statusCode == 200) {
-    return cartItemListFromJson(response.body);
+    try {
+      return cartItemListFromJson(response.body);
+    } catch (e) {
+      print('Error parsing cart items: $e');
+      print('Response body: ${response.body}');
+      return [];
+    }
   } else {
-    throw Exception("Không lấy được giỏ hàng");
+    throw Exception("Không lấy được giỏ hàng: ${response.statusCode}");
   }
-  return [];
 }
 
 Future<bool> customerAddToCart(CartItem c) async {
@@ -174,7 +224,6 @@ Future<bool> customerAddToCart(CartItem c) async {
 Future<bool> customerUpdateCart(CartItem item) async {
   final headers = await _authHeader();
 
-Future<bool> customerUpdateCart(CartItem item) async {
   final response = await http.put(
     Uri.parse('${ApiConfig.baseUrl}/customer/cart'),
     headers: headers,

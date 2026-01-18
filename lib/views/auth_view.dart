@@ -62,57 +62,65 @@ class _AuthViewState extends State<AuthView>
 
   // LOGIN
   Future<void> signin() async {
-    // BƯỚC 1: LOGIN → LẤY TOKEN
-    final String? token = await login(
-      _emailLogin.text.trim(),
-      _passwordLogin.text.trim(),
-    );
-
-    if (token == null) {
-      showMessage("Invalid email or password");
-      return;
-    }
-
-    // LƯU TOKEN TRƯỚC
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', token);
-
-    // BƯỚC 2: LẤY PROFILE BẰNG TOKEN
-    final Customer customer = await customerProfile();
-
-    // SET AUTH
-    await context.read<AuthProvider>().setAuth(token, customer);
-
-    // ROUTE THEO ROLE
-    if (customer.role == "ADMIN") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminHomeView()),
+    setState(() => _isLoading = true);
+    
+    try {
+      // LOGIN → LẤY TOKEN VÀ CUSTOMER TỪ RESPONSE
+      final result = await loginWithCustomer(
+        _emailLogin.text.trim(),
+        _passwordLogin.text.trim(),
       );
 
-      Customer? loggedInUser = await customerSignin(loginUser);
-
-      if (loggedInUser == null) {
-        showMessage("Email hoặc mật khẩu không chính xác");
+      if (result == null || result['token'] == null) {
+        showMessage("Invalid email or password");
         return;
       }
 
-      // Cập nhật Provider (Dùng await nếu updateUserId trả về Future)
-      await context.read<AuthProvider>().updateUserId();
+      final String token = result['token'];
+      Customer? customer = result['customer'];
 
-      if (!mounted) return;
+      // Nếu không có customer trong response, thử lấy từ profile
+      if (customer == null) {
+        try {
+          // LƯU TOKEN TRƯỚC
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token);
+          
+          // LẤY PROFILE BẰNG TOKEN
+          customer = await customerProfile();
+        } catch (e) {
+          showMessage("Không thể lấy thông tin người dùng");
+          return;
+        }
+      } else {
+        // LƯU TOKEN VÀ CUSTOMER ID
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        await prefs.setString('customerId', customer.id.toString());
+      }
 
-      // Điều hướng dựa trên Role
-      Widget destination = (loggedInUser.role == "ADMIN")
-          ? const AdminHomeView()
-          : const Home();
+      // SET AUTH
+      await context.read<AuthProvider>().setAuth(token, customer);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => destination),
-      );
+      // ROUTE THEO ROLE
+      if (customer.role == "ADMIN") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminHomeView()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Home()),
+        );
+      }
 
-    showMessage("Welcome, ${customer.name}!");
+      showMessage("Welcome, ${customer.name}!");
+    } catch (e) {
+      showMessage("Lỗi đăng nhập: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
   Future<void> signinWithGoogle() async {
     try {
@@ -133,6 +141,9 @@ class _AuthViewState extends State<AuthView>
 
       // 4) lấy profile backend
       final Customer customer = await customerProfile();
+      
+      // Lưu customerId
+      await prefs.setString('customerId', customer.id.toString());
 
       await context.read<AuthProvider>().setAuth(token, customer);
 
@@ -174,6 +185,9 @@ class _AuthViewState extends State<AuthView>
 
       // 4) lấy profile backend
       final Customer customer = await customerProfile();
+      
+      // Lưu customerId
+      await prefs.setString('customerId', customer.id.toString());
 
       await context.read<AuthProvider>().setAuth(token, customer);
 

@@ -9,7 +9,7 @@ Future<List<Customer>> adminFetchUsers() async {
   final token = prefs.getString('token') ?? "";
 
   final res = await http.get(
-    Uri.parse('$baseUrl/admin/customers'),
+    Uri.parse('${ApiConfig.baseUrl}/admin/customers'),
     headers: {"Authorization": "Bearer $token"},
   );
 
@@ -26,7 +26,7 @@ Future<bool> adminAddUser(Customer c) async {
   final token = prefs.getString('token') ?? "";
 
   final res = await http.post(
-    Uri.parse('$baseUrl/admin/customer'),
+    Uri.parse('${ApiConfig.baseUrl}/admin/customer'),
     headers: {
       "Content-Type": "application/json",
       "Authorization": "Bearer $token"
@@ -42,7 +42,7 @@ Future<bool> adminUpdateUser(Customer c) async {
   final token = prefs.getString('token') ?? "";
 
   final res = await http.put(
-    Uri.parse('$baseUrl/admin/customer/${c.id}'),
+    Uri.parse('${ApiConfig.baseUrl}/admin/customer/${c.id}'),
     headers: {
       "Content-Type": "application/json",
       "Authorization": "Bearer $token"
@@ -58,7 +58,7 @@ Future<bool> adminDeleteUser(int id) async {
   final token = prefs.getString('token') ?? "";
 
   final res = await http.delete(
-    Uri.parse('$baseUrl/admin/customer/$id'),
+    Uri.parse('${ApiConfig.baseUrl}/admin/customer/$id'),
     headers: {"Authorization": "Bearer $token"},
   );
 
