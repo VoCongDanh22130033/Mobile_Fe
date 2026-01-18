@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">shopsense_new</string>
+
+    <string name="facebook_app_id">1416123653397738</string>
+    <string name="fb_login_protocol_scheme">fb1416123653397738</string>
+
+    <!-- Client Token -->
+    <string name="facebook_client_token">
+        306a97b95adcc5f9e95d13df1a4f0c69
+    </string>
+</resources>

@@ -161,7 +161,7 @@ class _ProductViewState extends State<ProductView> {
                   child: Image.network(
                     product.thumbnailUrl.startsWith('http')
                         ? product.thumbnailUrl
-                        : '$baseUrl/${product.thumbnailUrl}',
+                        : '${ApiConfig.baseUrl}/${product.thumbnailUrl}',
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
                     const Icon(Icons.broken_image, size: 100, color: Colors.grey),
@@ -289,7 +289,7 @@ class _ProductViewState extends State<ProductView> {
 
                 const Divider(thickness: 1),
 
-                // ✅ KHÔI PHỤC: Review Section
+                //KHÔI PHỤC: Review Section
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Column(

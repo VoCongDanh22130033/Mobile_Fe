@@ -1,4 +1,4 @@
-import 'dart:io'; // Cần thêm thư viện này để dùng File
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shopsense_new/models/customer.dart';
@@ -185,6 +185,62 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
                   ),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 1,
+                  children: [
+                    _buildActionCard(
+                      "Đơn Hàng",
+                      Icons.shopping_bag,
+                          () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (
+                              context) => const OrdersView()),
+                        );
+                      },
+                    ),
+                    _buildActionCard(
+                      "Chỉnh sửa ",
+                      Icons.edit,
+                          () async {
+                        final profile = await customerProfile(); // không truyền tham số
+                        final updatedUser = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                EditProfileView(currentUser: profile),
+                          ),
+                        );
+                        if (updatedUser != null) setState(() {});
+                      },
+                    ),
+                    _buildActionCard(
+                      "Yêu thích",
+                      Icons.favorite,
+                          () async {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (
+                              context) => const WishlistScreen()),
+                        );
+                      },
+                    ),
+                    _buildActionCard(
+                      "Địa Chỉ",
+                      Icons.location_on,
+                          () {
+                        debugPrint('Địa chỉ.');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
           const SizedBox(height: 60),
@@ -311,7 +367,11 @@ class _ProfileState extends State<Profile> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, child) {
-        return auth.userId.isEmpty ? _buildNotLoggedInView() : _buildProfileView();
+        if (!auth.isLoggedIn) {
+          return _buildNotLoggedInView();
+        } else {
+          return _buildProfileView();
+        }
       },
     );
   }

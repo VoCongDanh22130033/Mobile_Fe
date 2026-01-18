@@ -1,11 +1,35 @@
-// const String baseUrl = "https://daren-stroppy-joette.ngrok-free.dev";
-const String baseUrl =   "https://jaliyah-nonfuturistic-extrinsically.ngrok-free.dev";
-String getImageUrl(String? path) {
-  if (path == null || path.isEmpty) return "https://via.placeholder.com/150";
-  if (path.startsWith('http')) return path;
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 
-  // Đảm bảo không bị thừa dấu "/" giữa baseUrl và path
-  final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+class ApiConfig {
+  static String get baseUrl {
+    //Flutter Web
+    if (kIsWeb) {
+      return "http://localhost:8080";
+      //KHÔNG dùng ngrok khi chạy web local
+    }
 
-  return "$baseUrl/$cleanPath";
+    //Android Emulator
+    if (Platform.isAndroid) {
+      return "http://10.0.2.2:8080";
+    }
+
+    //iOS Simulator (nếu có)
+    if (Platform.isIOS) {
+      return "http://localhost:8080";
+    }
+
+    //Windows / macOS app
+    return "http://localhost:8080";
+  }
+
+  //Hàm xử lý URL ảnh an toàn
+  static String getImageUrl(String path) {
+    if (path.startsWith('http')) {
+      return path;
+    }
+
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return "${baseUrl}/$cleanPath";
+  }
 }

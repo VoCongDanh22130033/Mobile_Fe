@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shopsense_new/home.dart';
-import 'package:shopsense_new/providers/auth_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'firebase_options.dart';
+import 'package:shopsense_new/home.dart';
+import 'package:shopsense_new/providers/auth_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase init 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Locale mặc định cho intl
   Intl.defaultLocale = 'vi_VN';
+
   runApp(const MyApp());
 }
 
@@ -21,14 +32,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider()..loadAuth(),
+        ),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
-        title: 'Flutter Demo',
+        title: 'ShopSense',
         debugShowCheckedModeBanner: false,
 
-        // ✅ LOCALIZATION CHUẨN
+        //LOCALIZATION
         locale: const Locale('vi', 'VN'),
         supportedLocales: const [
           Locale('vi', 'VN'),
@@ -41,13 +54,15 @@ class MyApp extends StatelessWidget {
         ],
 
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
           useMaterial3: true,
+
+          //Google Fonts (nếu dùng)
+          textTheme: GoogleFonts.interTextTheme(),
         ),
 
         home: const Home(),
-      )
-      ,
+      ),
     );
   }
 }

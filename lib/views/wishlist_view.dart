@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shopsense_new/models/wishlist.dart';
 import 'package:shopsense_new/repository/customer_repo.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shopsense_new/views/product_view.dart'; // ✅ import thêm
+import 'package:shopsense_new/views/product_view.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -12,23 +11,17 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
-  Future<List<Wishlist>>? _wishlistFuture;
-  int _customerId = 0;
+  late Future<List<Wishlist>> _wishlistFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadUserAndWishlist();
+    _wishlistFuture = fetchWishlist(); // ✅ JWT-only
   }
 
-  Future<void> _loadUserAndWishlist() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('userId');
-    int customerId = int.tryParse(userId ?? '0') ?? 0;
-
+  void _reloadWishlist() {
     setState(() {
-      _customerId = customerId;
-      _wishlistFuture = fetchWishlist(customerId);
+      _wishlistFuture = fetchWishlist();
     });
   }
 
@@ -40,9 +33,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
-      body: _wishlistFuture == null
-          ? const Center(child: CircularProgressIndicator())
-          : FutureBuilder<List<Wishlist>>(
+      body: FutureBuilder<List<Wishlist>>(
         future: _wishlistFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -69,24 +60,23 @@ class _WishlistScreenState extends State<WishlistScreen> {
             itemCount: wishlistItems.length,
             itemBuilder: (context, index) {
               final item = wishlistItems[index];
-              final imageUrl = (item.thumbnailUrl.isNotEmpty)
+              final imageUrl = item.thumbnailUrl.isNotEmpty
                   ? item.thumbnailUrl
                   : 'https://via.placeholder.com/150';
 
               return Card(
-                margin: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
+                margin:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 elevation: 3,
                 child: ListTile(
                   onTap: () {
-                    // ✅ Khi click vào sản phẩm → chuyển sang ProductView
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ProductView(
+                        builder: (_) => ProductView(
                           productId: item.productId.toString(),
                         ),
                       ),
@@ -99,7 +89,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       width: 55,
                       height: 55,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
+                      errorBuilder: (_, __, ___) {
                         return Image.asset(
                           'assets/images/avatar-1.png',
                           width: 40,
@@ -111,8 +101,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   ),
                   title: Text(
                     item.title.isNotEmpty ? item.title : 'No title',
-                    style:
-                    const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
                     '${item.salePrice.toStringAsFixed(0)} VNĐ',
@@ -125,16 +114,14 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     icon: const Icon(Icons.delete_outline),
                     color: Colors.red,
                     onPressed: () async {
-                      item.customerId = _customerId;
-                      bool success = await removeFromWishlist(item);
+                      final success = await removeFromWishlist(item);
                       if (success) {
-                        setState(() {
-                          _wishlistFuture = fetchWishlist(_customerId);
-                        });
+                        _reloadWishlist();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                              content: Text(
-                                  '${item.title} đã bị xóa khỏi wishlist')),
+                            content: Text(
+                                '${item.title} đã bị xóa khỏi wishlist'),
+                          ),
                         );
                       }
                     },

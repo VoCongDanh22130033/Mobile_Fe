@@ -1,310 +1,272 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:shopsense_new/models/cart_item.dart';
-import 'package:shopsense_new/models/auth_response.dart';
 import 'package:shopsense_new/models/customer.dart';
 import 'package:shopsense_new/models/order.dart';
 import 'package:shopsense_new/models/place_order.dart';
-import 'package:shopsense_new/util/constants.dart';
 import 'package:shopsense_new/models/wishlist.dart';
+import 'package:shopsense_new/util/constants.dart';
 
-/// --- HELPER FUNCTIONS ---
+/// AUTH
 
-// Kiểm tra JSON hợp lệ và tránh lỗi trang HTML (403/404/500) từ Ngrok/Server
-bool _isJson(String? body) {
-  if (body == null || body.trim().isEmpty) return false;
-  final content = body.trim();
-  if (content.startsWith('<!DOCTYPE') || content.startsWith('<html')) return false;
-  try {
-    jsonDecode(content);
-    return true;
-  } catch (_) {
-    return false;
-  }
+Future<String?> login(String email, String password) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/customer/login');
+
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'email': email,
+      'password': password,
+    }),
+  );
+
+  //DEBUG
+  print('LOGIN URL: $url');
+  print('LOGIN STATUS: ${response.statusCode}');
+  print('LOGIN BODY: ${response.body}');
+
+  if (response.statusCode != 200) return null;
+
+  final json = jsonDecode(response.body);
+  return json['token']; // backend có
 }
 
-// Lấy Headers chung bao gồm Token và Bypass Ngrok
-Future<Map<String, String>> _getAuthHeaders() async {
+/// SIGNUP
+
+Future<bool> customerSignup(Customer c) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/customer/signup');
+
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'name': c.name,
+      'email': c.email,
+      'password': c.password,
+      'address': c.address,
+    }),
+  );
+
+  //DEBUG
+  print('SIGNUP URL: $url');
+  print('SIGNUP STATUS: ${response.statusCode}');
+  print('SIGNUP BODY: ${response.body}');
+
+  // backend có thể trả 200 hoặc 201
+  return response.statusCode == 200 || response.statusCode == 201;
+}
+Future<String?> loginWithFirebaseIdToken(String idToken) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/customer/login/firebase');
+
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'idToken': idToken,
+    }),
+  );
+
+  print('FIREBASE LOGIN URL: $url');
+  print('FIREBASE LOGIN STATUS: ${response.statusCode}');
+  print('FIREBASE LOGIN BODY: ${response.body}');
+
+  if (response.statusCode != 200) return null;
+
+  final json = jsonDecode(response.body);
+  return json['token'];
+}
+
+/// HELPER: AUTH HEADER
+
+Future<Map<String, String>> _authHeader() async {
   final prefs = await SharedPreferences.getInstance();
-  String? token = prefs.getString('token');
-
-  // Log Token để kiểm tra khi gặp lỗi 403 (Chỉ hiện trong debug)
-  debugPrint("🔑 Auth Token: ${token ?? 'NULL'}");
-
+  final token = prefs.getString('token') ?? "";
   return {
-    "Content-Type": "application/json; charset=utf-8",
-    "Accept": "application/json",
-    "ngrok-skip-browser-warning": "true", // Bypass trang cảnh báo của Ngrok
-    if (token != null && token.isNotEmpty) "Authorization": "Bearer $token",
+    "Content-Type": "application/json",
+    "Authorization": "Bearer $token",
   };
 }
 
-// Lấy UserId từ SharedPreferences
-Future<String> _getStoredUserId() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('userId') ?? "";
-}
-
-/// --- CUSTOMER AUTHENTICATION ---
-
-Future<bool> customerSignup(Customer c) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/customer/signup'),
-      headers: {"Content-Type": "application/json"},
-      body: customerToJson(c),
-    );
-    return response.statusCode == 200 || response.statusCode == 201;
-  } catch (e) {
-    debugPrint("❌ Signup Error: $e");
-    return false;
-  }
-}
-
-Future<Customer?> customerSignin(Customer c) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/customer/login'),
-      headers: {"Content-Type": "application/json"},
-      body: customerToJson(c),
-    );
-
-    if (response.statusCode != 200 || !_isJson(response.body)) {
-      debugPrint("❌ Login Error Code: ${response.statusCode}");
-      return null;
-    }
-
-    AuthResponse a = authResponseFromJson(response.body);
-    if (a.status != "success") return null;
-
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', a.token!);
-    await prefs.setString('userId', a.user!['id'].toString());
-
-    return Customer.fromJson(a.user!);
-  } catch (e) {
-    debugPrint("❌ Login Exception: $e");
-    return null;
-  }
-}
-
-Future<bool> adminSignin(Customer c) async {
-  try {
-    final response = await http.post(
-      Uri.parse('$baseUrl/admin/login'),
-      headers: {"Content-Type": "application/json"},
-      body: customerToJson(c),
-    );
-
-    if (response.statusCode == 200 && _isJson(response.body)) {
-      AuthResponse a = authResponseFromJson(response.body);
-      if (a.status == "success") {
-        final SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', a.token!);
-        await prefs.setString('userId', a.user!['id'].toString());
-        return true;
-      }
-    }
-    return false;
-  } catch (e) {
-    return false;
-  }
-}
-
-/// --- CUSTOMER PROFILE ---
+/// PROFILE
 
 Future<Customer> customerProfile() async {
-  String userId = await _getStoredUserId();
-  if (userId.isEmpty) throw Exception("Chưa đăng nhập");
+  final headers = await _authHeader();
 
   final response = await http.get(
-    Uri.parse('$baseUrl/customer/$userId'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/customer/profile'),
+    headers: headers,
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
+  if (response.statusCode == 200) {
     return customerFromJson(response.body);
   } else {
-    debugPrint("❌ Fetch Profile Error: ${response.statusCode}");
-    throw Exception("Không thể lấy thông tin người dùng.");
+    throw Exception("Không thể lấy thông tin hồ sơ");
   }
 }
 
+/// UPDATE PROFILE
 Future<bool> customerUpdateProfile(Customer user) async {
-  try {
-    final url = Uri.parse('$baseUrl/customer/${user.id}');
-    final headers = await _getAuthHeaders();
+  final headers = await _authHeader();
 
-    // Loại bỏ các trường password hoặc trường nhạy cảm nếu không thay đổi để tránh lỗi 403
-    final Map<String, dynamic> updateData = user.toJson();
-    updateData.remove('password');
-
-    final response = await http.put(
-      url,
-      headers: headers,
-      body: jsonEncode(updateData),
-      encoding: Encoding.getByName('utf-8'),
-    );
-
-    debugPrint("🔄 Update Status Code: ${response.statusCode}");
-
-    if (response.statusCode == 403) {
-      // Nếu vẫn 403, hãy kiểm tra tab "Response" trên http://127.0.0.1:4040
-      debugPrint("⛔ Server Response (403): ${response.body}");
-    }
-
-    return response.statusCode >= 200 && response.statusCode < 300;
-  } catch (e) {
-    debugPrint("❌ Lỗi Update: $e");
-    return false;
-  }
-}
-
-/// --- CART MANAGEMENT ---
-
-Future<List<CartItem>> customerCart() async {
-  String userId = await _getStoredUserId();
-  if (userId.isEmpty) return [];
-
-  final response = await http.get(
-    Uri.parse('$baseUrl/customer/cart?id=$userId'),
-    headers: await _getAuthHeaders(),
+  final response = await http.put(
+    Uri.parse('${ApiConfig.baseUrl}/customer/profile'),
+    headers: headers,
+    body: jsonEncode({
+      "name": user.name,
+      "email": user.email,
+      "address": user.address,
+    }),
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
+  return response.statusCode == 200;
+}
+
+/// ORDERS
+
+Future<List<Order>> customerOrders() async {
+  final headers = await _authHeader();
+
+  final response = await http.get(
+    Uri.parse('${ApiConfig.baseUrl}/customer/orders'),
+    headers: headers,
+  );
+
+  if (response.statusCode == 200) {
+    return orderListFromJson(response.body);
+  } else {
+    throw Exception("Không nhận được đơn hàng");
+  }
+}
+
+/// CART
+
+Future<List<CartItem>> customerCart() async {
+  final headers = await _authHeader();
+
+  final response = await http.get(
+    Uri.parse('${ApiConfig.baseUrl}/customer/cart'),
+    headers: headers,
+  );
+
+  if (response.statusCode == 200) {
     return cartItemListFromJson(response.body);
+  } else {
+    throw Exception("Không lấy được giỏ hàng");
   }
   return [];
 }
 
 Future<bool> customerAddToCart(CartItem c) async {
-  String userId = await _getStoredUserId();
-  if (userId.isEmpty) return false;
-  c.customerId = int.parse(userId);
+  final headers = await _authHeader();
 
   final response = await http.post(
-    Uri.parse('$baseUrl/customer/cart'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/customer/cart'),
+    headers: headers,
     body: jsonEncode(c.toJson()),
   );
 
-  return response.statusCode == 200 || response.statusCode == 201;
+  return response.statusCode == 200;
 }
 
 Future<bool> customerUpdateCart(CartItem item) async {
+  final headers = await _authHeader();
+
+Future<bool> customerUpdateCart(CartItem item) async {
   final response = await http.put(
-    Uri.parse('$baseUrl/customer/cart'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/customer/cart'),
+    headers: headers,
     body: jsonEncode(item.toJson()),
   );
+
   return response.statusCode == 200;
 }
 
 Future<bool> customerRemoveCart(int id) async {
+  final headers = await _authHeader();
+
   final response = await http.delete(
-    Uri.parse('$baseUrl/customer/cart?id=$id'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/customer/cart?id=$id'),
+    headers: headers,
   );
+
   return response.statusCode == 200;
 }
 
-/// --- ORDER MANAGEMENT ---
-
-Future<List<Order>> customerOrders() async {
-  String userId = await _getStoredUserId();
-  final response = await http.get(
-    Uri.parse('$baseUrl/customer/orders?id=$userId'),
-    headers: await _getAuthHeaders(),
-  );
-
-  if (response.statusCode == 200 && _isJson(response.body)) {
-    return orderListFromJson(response.body);
-  } else {
-    return [];
-  }
-}
+/// ORDER
 
 Future<String> customerPlaceOrder(PlaceOrder c) async {
-  String userId = await _getStoredUserId();
-  if (userId.isEmpty) return "";
-  c.customerId = int.parse(userId);
+  final headers = await _authHeader();
 
   final response = await http.post(
-    Uri.parse('$baseUrl/customer/order'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/customer/order'),
+    headers: headers,
     body: jsonEncode(c.toJson()),
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
-    Order o = orderFromJson(response.body);
+  if (response.statusCode == 200 && response.body.isNotEmpty) {
+    final o = orderFromJson(response.body);
     return o.id.toString();
   }
+
   return "";
 }
 
 Future<PlaceOrder> customerGetOrder(String orderId) async {
+  final headers = await _authHeader();
+
   final response = await http.get(
-    Uri.parse('$baseUrl/customer/order?id=$orderId'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/customer/order?id=$orderId'),
+    headers: headers,
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
+  if (response.statusCode == 200) {
     return placeOrderFromJson(response.body);
   } else {
-    throw Exception("Không thể lấy thông tin đơn hàng.");
+    throw Exception("Không lấy được đơn hàng");
   }
 }
 
-/// --- WISHLIST MANAGEMENT ---
+/// WISHLIST
 
 Future<bool> addToWishlist(Wishlist wishlist) async {
-  String userId = await _getStoredUserId();
-  if (userId.isEmpty) return false;
-  wishlist.customerId = int.parse(userId);
+  final headers = await _authHeader();
 
   final response = await http.post(
-    Uri.parse('$baseUrl/wishlist/add'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/wishlist/add'),
+    headers: headers,
     body: jsonEncode(wishlist.toJson()),
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
-    final result = jsonDecode(response.body);
-    return result == true || result == 1;
-  }
-  return false;
+  return response.statusCode == 200;
 }
 
 Future<bool> removeFromWishlist(Wishlist wishlist) async {
-  String userId = await _getStoredUserId();
-  if (userId.isEmpty) return false;
-  wishlist.customerId = int.parse(userId);
+  final headers = await _authHeader();
 
   final response = await http.post(
-    Uri.parse('$baseUrl/wishlist/remove'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/wishlist/remove'),
+    headers: headers,
     body: jsonEncode(wishlist.toJson()),
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
-    final result = jsonDecode(response.body);
-    return result == true || result == 1;
-  }
-  return false;
+  return response.statusCode == 200;
 }
 
-Future<List<Wishlist>> fetchWishlist(int customerId) async {
+Future<List<Wishlist>> fetchWishlist() async {
+  final headers = await _authHeader();
+
   final response = await http.get(
-    Uri.parse('$baseUrl/wishlist?customerId=$customerId'),
-    headers: await _getAuthHeaders(),
+    Uri.parse('${ApiConfig.baseUrl}/wishlist'),
+    headers: headers,
   );
 
-  if (response.statusCode == 200 && _isJson(response.body)) {
+  if (response.statusCode == 200) {
     final List data = jsonDecode(response.body);
     return data.map((e) => Wishlist.fromJson(e)).toList();
   } else {
-    return [];
+    throw Exception('Không lấy được wishlist');
   }
 }

@@ -3,7 +3,7 @@ import 'package:shopsense_new/models/cart_item.dart';
 import 'package:shopsense_new/views/checkout_view.dart';
 import 'package:shopsense_new/repository/customer_repo.dart';
 import 'package:shopsense_new/util/constants.dart';
-import 'dart:math'; // ✅ Cần import thư viện math cho hàm pow
+import 'dart:math';
 
 class CartView extends StatefulWidget {
   const CartView({super.key});
@@ -27,17 +27,13 @@ class _CartViewState extends State<CartView> {
     });
   }
 
-  // =========================================================
-  // ✅ HÀM TIỆN ÍCH LÀM TRÒN SỐ (Đảm bảo độ chính xác 2 số thập phân)
-  // =========================================================
+  // HÀM TIỆN ÍCH LÀM TRÒN SỐ (Đảm bảo độ chính xác 2 số thập phân)
   double roundDouble(double value, int places) {
     num mod = pow(10.0, places);
     return ((value * mod).round().toDouble() / mod);
   }
 
-  // =========================================================
-  // ✅ HÀM TIỆN ÍCH ĐỊNH DẠNG TIỀN TỆ (Loại bỏ .00 nếu là số nguyên)
-  // =========================================================
+  // HÀM TIỆN ÍCH ĐỊNH DẠNG TIỀN TỆ (Loại bỏ .00 nếu là số nguyên)
   String formatCurrency(double value) {
     // Kiểm tra xem giá trị có phần thập phân bằng 0 không
     if (value == value.toInt().toDouble()) {
@@ -101,14 +97,14 @@ class _CartViewState extends State<CartView> {
                         padding: const EdgeInsets.all(8.0),
                         child: Row(
                           children: [
-                            // 🖼️ Hình ảnh sản phẩm
+                            //Hình ảnh sản phẩm
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
                                 item.productThumbnailUrl != null
                                     ? (item.productThumbnailUrl!.startsWith('http')
                                     ? item.productThumbnailUrl!
-                                    : '$baseUrl/${item.productThumbnailUrl}')
+                                    : '${ApiConfig.baseUrl}/${item.productThumbnailUrl}')
                                     : 'https://via.placeholder.com/80',
                                 width: 70,
                                 height: 70,
@@ -120,7 +116,7 @@ class _CartViewState extends State<CartView> {
                             ),
                             const SizedBox(width: 10),
 
-                            // 🏷️ Thông tin sản phẩm
+                            //Thông tin sản phẩm
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +137,7 @@ class _CartViewState extends State<CartView> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    // ✅ SỬ DỤNG formatCurrency
+                                    //SỬ DỤNG formatCurrency
                                     formatCurrency(item.subTotal),
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w500,
@@ -151,7 +147,7 @@ class _CartViewState extends State<CartView> {
                               ),
                             ),
 
-                            // 🔘 Các nút tăng giảm, xóa
+                            //Các nút tăng giảm, xóa
                             Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -170,14 +166,14 @@ class _CartViewState extends State<CartView> {
                                         if (item.productQuantity > 1) {
                                           setState(() {
                                             item.productQuantity--;
-                                            // ✅ ÁP DỤNG roundDouble
+                                            //ÁP DỤNG roundDouble
                                             item.subTotal = roundDouble(
                                                 item.productQuantity *
                                                     item.productUnitPrice,
                                                 2);
                                           });
                                           await customerUpdateCart(item);
-                                          refreshCart(); // 🔥 load lại cart từ server
+                                          refreshCart(); // load lại cart từ server
 
                                         }
                                       },
@@ -196,14 +192,14 @@ class _CartViewState extends State<CartView> {
                                       onPressed: () async {
                                         setState(() {
                                           item.productQuantity++;
-                                          // ✅ ÁP DỤNG roundDouble
+                                          //ÁP DỤNG roundDouble
                                           item.subTotal = roundDouble(
                                               item.productQuantity *
                                                   item.productUnitPrice,
                                               2);
                                         });
                                         await customerUpdateCart(item);
-                                        refreshCart(); // 🔥 load lại cart từ server
+                                        refreshCart(); // load lại cart từ server
 
                                       },
                                     ),

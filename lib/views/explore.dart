@@ -130,7 +130,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
   }
 
 
-  // ✅ HÀM TIỆN ÍCH ĐỂ CHUẨN HÓA VÀ TRẢ VỀ GIÁ TRỊ KIỂU INT
+  //HÀM TIỆN ÍCH ĐỂ CHUẨN HÓA VÀ TRẢ VỀ GIÁ TRỊ KIỂU INT
   int _parsePrice(String price) {
     if (price.isEmpty) return 0;
 
@@ -167,12 +167,12 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
       productName: product.title,
       productThumbnailUrl: product.thumbnailUrl,
 
-      // ✅ Dùng giá trị double đã được làm sạch
+      //Dùng giá trị double đã được làm sạch
       productUnitPrice: unitPrice,
 
       productQuantity: quantity,
 
-      // ✅ SubTotal cũng dùng giá trị đã chuẩn hóa
+      //SubTotal cũng dùng giá trị đã chuẩn hóa
       subTotal: unitPrice * quantity,
     );
 
@@ -182,15 +182,15 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(success
-              ? "✅ Thêm ${product.title} thành công vào giỏ hàng"
-              : "❌ Thêm thất bại"),
+              ? "Thêm ${product.title} thành công vào giỏ hàng"
+              : "Thêm thất bại"),
           duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("❌ Lỗi khi thêm sản phẩm: $e"),
+          content: Text("Lỗi khi thêm sản phẩm: $e"),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -211,7 +211,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
       productId: product.id,
       title: product.title,
       thumbnailUrl: product.thumbnailUrl,
-      // ✅ Dùng giá trị đã được làm sạch và chuẩn hóa (double)
+      //Dùng giá trị đã được làm sạch và chuẩn hóa (double)
       salePrice: salePrice,
       stockStatus: product.stockStatus ?? 'In Stock',
     );
@@ -371,7 +371,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
 
                     final product = products[index];
 
-                    // ✅ Lấy giá trị số nguyên đã chuẩn hóa
+                    //Lấy giá trị số nguyên đã chuẩn hóa
                     final int salePriceValue =
                     _parsePrice(product.salePrice);
                     return GestureDetector(
@@ -399,7 +399,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                                       product.thumbnailUrl.startsWith(
                                           'http')
                                           ? product.thumbnailUrl
-                                          : "$baseUrl${product.thumbnailUrl}",
+                                          : "${ApiConfig.baseUrl}${product.thumbnailUrl}",
                                       fit: BoxFit.cover,
                                       errorBuilder:
                                           (context, error, _) =>

@@ -88,7 +88,7 @@ class _OrderViewState extends State<OrderView> {
                         item.productThumbnailUrl!.isNotEmpty
                         ? (item.productThumbnailUrl!.startsWith("http")
                         ? item.productThumbnailUrl!
-                        : "$baseUrl/${item.productThumbnailUrl}")
+                        : "${ApiConfig.baseUrl}/${item.productThumbnailUrl}")
                         : "https://via.placeholder.com/80";
 
                     return Card(

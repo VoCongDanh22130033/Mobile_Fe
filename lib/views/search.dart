@@ -134,7 +134,7 @@ class _SearchState extends State<Search> {
                     thumbnailUrl: product.thumbnailUrl
                         .startsWith('http')
                         ? product.thumbnailUrl
-                        : "$baseUrl${product.thumbnailUrl.startsWith('/') ? product.thumbnailUrl : '/${product.thumbnailUrl}'}",
+                        : "${ApiConfig.baseUrl}${product.thumbnailUrl.startsWith('/') ? product.thumbnailUrl : '/${product.thumbnailUrl}'}",
                   ),
                 );
               },

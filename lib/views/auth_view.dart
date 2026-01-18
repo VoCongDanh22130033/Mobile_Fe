@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shopsense_new/models/customer.dart';
+import 'package:shopsense_new/models/auth_response.dart';
 import 'package:shopsense_new/providers/auth_provider.dart';
 import 'package:shopsense_new/repository/customer_repo.dart';
 import 'package:shopsense_new/views/admin/admin_home.dart';
@@ -13,7 +15,8 @@ class AuthView extends StatefulWidget {
   State<AuthView> createState() => _AuthViewState();
 }
 
-class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin {
+class _AuthViewState extends State<AuthView>
+    with SingleTickerProviderStateMixin {
   bool isLogin = true;
   bool _isLoading = false; // Trạng thái chờ xử lý API
 
@@ -21,6 +24,7 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _address = TextEditingController();
+
   final TextEditingController _emailLogin = TextEditingController();
   final TextEditingController _passwordLogin = TextEditingController();
 
@@ -31,50 +35,59 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     _controller = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 600)
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
     );
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _fadeAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
     _controller.forward();
   }
 
   @override
   void dispose() {
-    // Giải phóng bộ nhớ cho các controller
+    _controller.dispose();
     _name.dispose();
     _email.dispose();
     _password.dispose();
     _address.dispose();
     _emailLogin.dispose();
     _passwordLogin.dispose();
-    _controller.dispose();
     super.dispose();
   }
 
   void showMessage(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// Xử lý Đăng nhập
+  // LOGIN
   Future<void> signin() async {
-    if (_emailLogin.text.isEmpty || _passwordLogin.text.isEmpty) {
-      showMessage("Vui lòng điền đầy đủ email và mật khẩu");
+    // BƯỚC 1: LOGIN → LẤY TOKEN
+    final String? token = await login(
+      _emailLogin.text.trim(),
+      _passwordLogin.text.trim(),
+    );
+
+    if (token == null) {
+      showMessage("Invalid email or password");
       return;
     }
 
-    setState(() => _isLoading = true);
+    // LƯU TOKEN TRƯỚC
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
 
-    try {
-      Customer loginUser = Customer(
-        id: 0,
-        name: "",
-        email: _emailLogin.text.trim(),
-        password: _passwordLogin.text.trim(),
-        address: "",
-        status: "",
-        emailVerified: false,
-        role: "",
+    // BƯỚC 2: LẤY PROFILE BẰNG TOKEN
+    final Customer customer = await customerProfile();
+
+    // SET AUTH
+    await context.read<AuthProvider>().setAuth(token, customer);
+
+    // ROUTE THEO ROLE
+    if (customer.role == "ADMIN") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminHomeView()),
       );
 
       Customer? loggedInUser = await customerSignin(loginUser);
@@ -84,7 +97,7 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
         return;
       }
 
-      // 🟢 Cập nhật Provider (Dùng await nếu updateUserId trả về Future)
+      // Cập nhật Provider (Dùng await nếu updateUserId trả về Future)
       await context.read<AuthProvider>().updateUserId();
 
       if (!mounted) return;
@@ -99,52 +112,115 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
         MaterialPageRoute(builder: (_) => destination),
       );
 
-      showMessage("Chào mừng quay lại, ${loggedInUser.name}!");
+    showMessage("Welcome, ${customer.name}!");
+  }
+  Future<void> signinWithGoogle() async {
+    try {
+      // 1) Firebase login
+      final authProvider = context.read<AuthProvider>();
+      final String firebaseIdToken = await authProvider.loginWithGoogleFirebase();
+
+      // 2) đổi Firebase ID Token -> JWT backend
+      final String? token = await loginWithFirebaseIdToken(firebaseIdToken);
+      if (token == null) {
+        showMessage("Login Google thất bại (backend không cấp token)");
+        return;
+      }
+
+      // 3) lưu token
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+
+      // 4) lấy profile backend
+      final Customer customer = await customerProfile();
+
+      await context.read<AuthProvider>().setAuth(token, customer);
+
+      // 5) route theo role
+      if (customer.role == "ADMIN") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminHomeView()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Home()),
+        );
+      }
+
+      showMessage("Welcome, ${customer.name}!");
     } catch (e) {
-      showMessage("Lỗi đăng nhập: $e");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      showMessage("Google login error: $e");
     }
   }
 
-  /// Xử lý Đăng ký
-  Future<void> signup() async {
-    if (_email.text.isEmpty || _password.text.isEmpty || _name.text.isEmpty) {
-      showMessage("Vui lòng điền các trường bắt buộc");
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
+  Future<void> signinWithFacebook() async {
     try {
-      Customer c = Customer(
-        id: 0,
-        name: _name.text.trim(),
-        email: _email.text.trim(),
-        password: _password.text.trim(),
-        address: _address.text.trim(),
-        status: "Pending",
-        emailVerified: false,
-        role: "CUSTOMER",
-      );
+      // 1) Firebase login
+      final authProvider = context.read<AuthProvider>();
+      final String firebaseIdToken = await authProvider.loginWithFacebookFirebase();
 
-      bool ok = await customerSignup(c);
-      if (ok) {
-        showMessage("Đăng ký thành công! Hãy đăng nhập.");
-        setState(() => isLogin = true);
-      } else {
-        showMessage("Đăng ký thất bại. Email có thể đã tồn tại.");
+      // 2) đổi Firebase ID Token -> JWT backend
+      final String? token = await loginWithFirebaseIdToken(firebaseIdToken);
+      if (token == null) {
+        showMessage("Login Facebook thất bại (backend không cấp token)");
+        return;
       }
+
+      // 3) lưu token
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+
+      // 4) lấy profile backend
+      final Customer customer = await customerProfile();
+
+      await context.read<AuthProvider>().setAuth(token, customer);
+
+      // 5) route theo role
+      if (customer.role == "ADMIN") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminHomeView()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Home()),
+        );
+      }
+
+      showMessage("Welcome, ${customer.name}!");
     } catch (e) {
-      showMessage("Lỗi kết nối: $e");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      showMessage("Facebook login error: $e");
+    }
+  }
+
+  // SIGNUP
+  Future<void> signup() async {
+    final Customer c = Customer(
+      id: 0,
+      name: _name.text.trim(),
+      email: _email.text.trim(),
+      password: _password.text,
+      address: _address.text.trim(),
+      status: null,
+      emailVerified: false,
+      role: "",
+    );
+
+    final bool ok = await customerSignup(c);
+
+    showMessage(ok ? "Sign up successful!" : "Something went wrong");
+
+    if (ok) {
+      setState(() => isLogin = true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final gradient = const LinearGradient(
+    const gradient = LinearGradient(
       colors: [Colors.indigo, Colors.blueAccent],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -160,17 +236,22 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
             opacity: _fadeAnimation,
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                 child: Card(
                   elevation: 10,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(25),
                     child: AnimatedCrossFade(
-                      crossFadeState: isLogin ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                      crossFadeState: isLogin
+                          ? CrossFadeState.showFirst
+                          : CrossFadeState.showSecond,
                       duration: const Duration(milliseconds: 500),
-                      firstChild: buildLoginForm(),
-                      secondChild: buildSignupForm(),
+                      firstChild: _buildLoginForm(),
+                      secondChild: _buildSignupForm(),
                     ),
                   ),
                 ),
@@ -182,15 +263,21 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget buildLoginForm() {
+  // UI
+  Widget _buildLoginForm() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           "Welcome Back 👋",
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.indigo),
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.indigo,
+          ),
         ),
         const SizedBox(height: 20),
+
         TextField(
           controller: _emailLogin,
           keyboardType: TextInputType.emailAddress,
@@ -219,11 +306,51 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
           ),
           child: const Text("LOGIN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
-        const SizedBox(height: 15),
+
+        const SizedBox(height: 12),
+
+        //Google
+        OutlinedButton.icon(
+          onPressed: signinWithGoogle,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          icon: const Icon(Icons.g_mobiledata),
+          label: const Text(
+            "Đăng nhập bằng Google",
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        //Facebook
+        OutlinedButton.icon(
+          onPressed: signinWithFacebook,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          icon: const Icon(Icons.facebook),
+          label: const Text(
+            "Đăng nhập bằng Facebook",
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
         TextButton(
           onPressed: () => setState(() => isLogin = false),
           child: const Text("Don’t have an account? Sign up"),
@@ -232,7 +359,8 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget buildSignupForm() {
+
+  Widget _buildSignupForm() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -257,7 +385,9 @@ class _AuthViewState extends State<AuthView> with SingleTickerProviderStateMixin
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
           ),
           child: const Text("SIGN UP", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
